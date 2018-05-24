@@ -17,11 +17,17 @@ class VFHPNode(object):
     def __init__(self):
         rospy.init_node('vfhp_planner', log_level=rospy.DEBUG)
 
-        # Obtener parámetros
+        #### Obtener parámetros
 
+        ## Parámetros ROS
+
+        self.world_frame_id = rospy.get_param("~world_frame_id", default="world")
+        self.robot_frame_id = rospy.get_param("~robot_frame_id", default="mecanum_base")
+
+        ## Parámetros propios del algoritmo VFH+
         self.grid_size = rospy.get_param('~grid_size', default=125)
         self.c_max = rospy.get_param('~c_max', default=20)
-        self.resolution = rospy.get_param('~resolution', default =0.04)
+        self.resolution = rospy.get_param('~resolution', default =0.35)
         self.window_size = rospy.get_param('~window_size', default=25)
         self.window_center = self.window_size/2
         self.alpha = rospy.get_param('~alpha', default=5)
@@ -29,13 +35,13 @@ class VFHPNode(object):
         self.d_max2 = np.square((self.window_size-1)*self.resolution)/2.0
         self.kb = np.float_(10.0)
         self.ka = np.float_(1+self.kb*self.d_max2)
-        self.r_rob = rospy.get_param('~robot_radius', default=0.02)
-        self.d_s = rospy.get_param('~d_s',default=0.04)
+        self.r_rob = rospy.get_param('~robot_radius', default=0.755)
+        self.d_s = rospy.get_param('~d_s',default=0.05)
         self.r_rs = self.r_rob + self.d_s
         self.t_lo = rospy.get_param('~t_lo',default=3000.0)
         self.t_hi = rospy.get_param('~t_hi', default=3500.0)
         self.wide_v = self.hist_size/8
-        self.v_max = rospy.get_param('~v_max', default=0.0628)
+        self.v_max = rospy.get_param('~v_max', default=0.31)
         self.v_min = rospy.get_param('~v_min', default=0.0)
         self.mu1 = rospy.get_param('~mu1', 6.0)
         self.mu2 = rospy.get_param('~mu2', 2.0)
@@ -73,11 +79,13 @@ class VFHPNode(object):
 
         # Subscribers
         self.odom_sub = rospy.Subscriber('odom', Odometry, self.odom_callback)
-        self.laser_sub = rospy.Subscriber('scanner', LaserScan, self.laser_callback)
-        self.pose_sub = rospy.Subscriber('pose', Pose2D, self.pose_callback)
+        self.laser_front_sub = rospy.Subscriber('scan_front', LaserScan, self.laser_callback)
+        self.laser_back_sub = rospy.Subscriber('scan_back', LaserScan, self.laser_callback)
+        self.pose_sub = rospy.Subscriber('pose_kinematic', Pose2D, self.pose_callback)
+        rospy.logerr
 
         # Publishers
-        self.cmd_pub = rospy.Publisher('cmd_vel', Twist, queue_size=3)
+        self.cmd_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
         #self.map_pub = rospy.Publisher('obstacle_grid', data_class, queue_size=3)
 
     def odom_callback(self, msg):
@@ -85,13 +93,14 @@ class VFHPNode(object):
         y = msg.pose.pose.position.y
         roll, pitch, yaw = tf.transformations.euler_from_quaternion(msg.pose.pose.orientation)
         theta = angles[2]
-        rospy.logdebug_throttle(1, "Receidved Odom msg (x, y, cita): %.2f, %.2f, %.2f" % (x, y, theta))
+        rospy.logdebug_throttle(1, "Received Odom msg (x, y, cita): %.2f, %.2f, %.2f" % (x, y, theta))
 
 
     def laser_callback(self, msg):
         # TODO:
         # Definir como se van a transformar las lecturas del laser
-        rospy.logdebug_throttle(1, "Received LaserScan msg")
+        rospy.logdebug_throttle(1, "Received LaserScan msg\n%s" % str(msg))
+
 
     def pose_callback(self, msg):
         rospy.logdebug_throttle(1, "Received Pose2D message: %.2f, %.2f, %.2f" % (msg.x , msg.y, msg.theta) )
