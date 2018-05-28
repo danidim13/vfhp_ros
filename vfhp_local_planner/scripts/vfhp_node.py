@@ -2,10 +2,13 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import math
 
 import tf
 
 import rospy
+
+from rospy.numpy_msg import numpy_msg
 from std_msgs.msg import *
 from geometry_msgs.msg import Twist, Pose2D
 from nav_msgs.msg import Odometry
@@ -24,7 +27,11 @@ class VFHPNode(object):
         self.world_frame_id = rospy.get_param("~world_frame_id", default="world")
         self.robot_frame_id = rospy.get_param("~robot_frame_id", default="mecanum_base")
 
+        self.goal_reached = True
+        self.goal = np.zeros(2,dtype=np.float64)
+
         ## Parámetros propios del algoritmo VFH+
+        ## Para más información ver documentación del módulo VFH
         self.grid_size = rospy.get_param('~grid_size', default=125)
         self.c_max = rospy.get_param('~c_max', default=20)
         self.resolution = rospy.get_param('~resolution', default =0.35)
@@ -79,8 +86,8 @@ class VFHPNode(object):
 
         # Subscribers
         self.odom_sub = rospy.Subscriber('odom', Odometry, self.odom_callback)
-        self.laser_front_sub = rospy.Subscriber('scan_front', LaserScan, self.laser_callback)
-        self.laser_back_sub = rospy.Subscriber('scan_back', LaserScan, self.laser_callback)
+        self.laser_front_sub = rospy.Subscriber('scan_front', numpy_msg(LaserScan), self.laser_callback)
+        self.laser_back_sub = rospy.Subscriber('scan_back', numpy_msg(LaserScan), self.laser_callback)
         self.pose_sub = rospy.Subscriber('pose_kinematic', Pose2D, self.pose_callback)
         rospy.logerr
 
@@ -97,14 +104,26 @@ class VFHPNode(object):
 
 
     def laser_callback(self, msg):
+
         # TODO:
-        # Definir como se van a transformar las lecturas del laser
-        rospy.logdebug_throttle(1, "Received LaserScan msg\n%s" % str(msg))
+        # Obtener información para transformar los puntos según la posición
+        # del laser.
+
+        # TODO:
+        # Definir si se va a pasar una transformacion al vfhp o y si se transforman
+        # las lecturas a un PointCloud antes de pasarlos.
+        ranges = msg.ranges
+        angles = np.array([msg.angle_min + i*msg.angle_increment for i in xrange(len(ranges))])
+        raw_data = np.column_stack((ranges,angles))
+        valid_data = raw_data[(raw_data[:,0] > msg.range_min) & (raw_data[:,0] < msg.range_max)]
+
+        #rospy.logdebug_throttle(1, "Received LaserScan msg\n%s" % str(msg))
+        #if msg.header.frame_id == "laser_front": rospy.logdebug_throttle(1, "Processed LaserScan msg from frame %s\nTotal readings: %d, discarded: %d\n" % (msg.header.frame_id, len(ranges), raw_data.shape[0]-valid_data.shape[0]))
 
 
     def pose_callback(self, msg):
         rospy.logdebug_throttle(1, "Received Pose2D message: %.2f, %.2f, %.2f" % (msg.x , msg.y, msg.theta) )
-        self.planner.update_position(msg.x + self.X_BIAS, msg.y + self.Y_BIAS, np.degrees(msg.theta))
+        self.planner.update_position(msg.x + self.X_BIAS, msg.y + self.Y_BIAS, math.degrees(msg.theta))
 
     def pub_cmd_vel(self, theta, v):
         # TODO:
@@ -117,12 +136,16 @@ class VFHPNode(object):
 
         while not rospy.is_shutdown():
 
-            self.planner.update_active_window()
-            self.planner.update_polar_histogram()
-            self.planner.update_bin_polar_histogram()
-            self.planner.update_masked_polar_hist(self.r_rob, self.r_rob)
-            valles = self.planner.find_valleys()
-            cita, v = self.planner.calculate_steering_dir(valles)
+            if not self.goal_reached:
+                self.planner.update_active_window()
+                self.planner.update_polar_histogram()
+                self.planner.update_bin_polar_histogram()
+                self.planner.update_masked_polar_hist(self.r_rob, self.r_rob)
+                valles = self.planner.find_valleys()
+                cita, v = self.planner.calculate_steering_dir(valles)
+            else:
+                cita = 0
+                v = 0
             self.pub_cmd_vel(cita, v)
 
             rate.sleep()
