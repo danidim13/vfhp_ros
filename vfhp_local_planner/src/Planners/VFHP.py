@@ -9,6 +9,7 @@ algoritmo VFH+, y constantes asociadas.
 """
 
 import numpy as np
+import math
 import matplotlib.pyplot as plt
 
 
@@ -424,13 +425,28 @@ class VFHPModel:
         elif sensor_readings.ndim != 2 or sensor_readings.shape[1] != 2:
             raise ValueError("Expected (n, 2) array, received %s" % str(sensor_readings.shape))
 
+        valid_readings = sensor_readings[sensor_readings[:,0] > 0.0]
+        
+        i = np.int_( (self.x_0 + valid_readings[:, 0]*np.cos(valid_readings[:, 1] + np.radians(self.cita)))/RESOLUTION )
+        j = np.int_( (self.y_0 + valid_readings[:, 0]*np.sin(valid_readings[:, 1] + np.radians(self.cita)))/RESOLUTION )
+
+        for x in xrange(valid_readings.shape[0]):
+            if self.obstacle_grid[i[x],j[x]] < C_MAX: self.obstacle_grid[i[x], j[x]] += 1
+
+    def update_obstacle_density3(self, sensor_readings):
+        if (type(sensor_readings) != np.ndarray):
+            raise TypeError("Expected numpy ndarray, received %s" % type(sensor_readings))
+        elif sensor_readings.ndim != 2 or sensor_readings.shape[1] != 2:
+            raise ValueError("Expected (n, 2) array, received %s" % str(sensor_readings.shape))
+
         for x in xrange(sensor_readings.shape[0]):
             r, theta = sensor_readings[x,:]
             if r == 0 and theta == 0:
                 continue
-            i = int( (self.x_0 + r*np.cos(theta + np.radians(self.cita)))/RESOLUTION )
-            j = int( (self.y_0 + r*np.sin(theta + np.radians(self.cita)))/RESOLUTION )
+            i = int( (self.x_0 + r*math.cos(theta + math.radians(self.cita)))/RESOLUTION )
+            j = int( (self.y_0 + r*math.sin(theta + math.radians(self.cita)))/RESOLUTION )
             if self.obstacle_grid[i,j] < C_MAX: self.obstacle_grid[i,j] += 1
+
 
     def _active_grid(self):
 
