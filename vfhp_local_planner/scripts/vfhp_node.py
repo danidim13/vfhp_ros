@@ -5,6 +5,7 @@ import numpy as np
 import math
 
 import tf
+import tf2_ros
 
 import rospy
 
@@ -89,11 +90,15 @@ class VFHPNode(object):
         self.laser_front_sub = rospy.Subscriber('scan_front', numpy_msg(LaserScan), self.laser_callback)
         self.laser_back_sub = rospy.Subscriber('scan_back', numpy_msg(LaserScan), self.laser_callback)
         self.pose_sub = rospy.Subscriber('pose_kinematic', Pose2D, self.pose_callback)
-        rospy.logerr
+
+        self.TfBuffer = tf2_ros.Buffer(cache_time = rospy.Duration(secs=5))
+        self.TfListener = tf2_ros.TransformListener(self.TfBuffer)
 
         # Publishers
         self.cmd_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
         #self.map_pub = rospy.Publisher('obstacle_grid', data_class, queue_size=3)
+
+        rospy.on_shutdown(self.planner._plot_active)
 
     def odom_callback(self, msg):
         x = msg.pose.pose.position.x
@@ -105,21 +110,38 @@ class VFHPNode(object):
 
     def laser_callback(self, msg):
 
-        # TODO:
-        # Obtener información para transformar los puntos según la posición
-        # del laser.
 
-        # TODO:
-        # Definir si se va a pasar una transformacion al vfhp o y si se transforman
-        # las lecturas a un PointCloud antes de pasarlos.
-        ranges = msg.ranges
-        angles = np.array([msg.angle_min + i*msg.angle_increment for i in xrange(len(ranges))])
-        raw_data = np.column_stack((ranges,angles))
-        valid_data = raw_data[(raw_data[:,0] > msg.range_min) & (raw_data[:,0] < msg.range_max)]
+        tf_found = self.TfBuffer.can_transform(self.robot_frame_id, msg.header.frame_id, rospy.Time(0))
 
-        #rospy.logdebug_throttle(1, "Received LaserScan msg\n%s" % str(msg))
-        #if msg.header.frame_id == "laser_front": rospy.logdebug_throttle(1, "Processed LaserScan msg from frame %s\nTotal readings: %d, discarded: %d\n" % (msg.header.frame_id, len(ranges), raw_data.shape[0]-valid_data.shape[0]))
+        if not tf_found:
+            rospy.logerr("Laser Transform not found from frame %s to target %s" %(msg.header.frame_id, self.robot_frame_id))
 
+        else:
+
+            # TODO:
+            # Si las transformaciones son fijas se podrían buscar una única vez,
+            # la primera vez que se recibe un mensaje, y guardar la info.
+            
+            tf_msg = self.TfBuffer.lookup_transform(self.robot_frame_id, msg.header.frame_id, rospy.Time(0))
+
+            quat = np.array([tf_msg.transform.rotation.x,
+                                tf_msg.transform.rotation.y,
+                                tf_msg.transform.rotation.z,
+                                tf_msg.transform.rotation.w], np.float64)
+
+            euler = tf.transformations.euler_from_quaternion(quat)
+            trans = np.array([tf_msg.transform.translation.x, tf_msg.transform.translation.y])
+
+            ranges = msg.ranges
+            angles = np.array([ euler[2] + msg.angle_min + i*msg.angle_increment for i in xrange(len(ranges))])
+            raw_data = np.column_stack((ranges,angles))
+            valid_data = raw_data[(raw_data[:,0] > msg.range_min) & (raw_data[:,0] < msg.range_max)]
+
+            rospy.logdebug_throttle(1, "Laser tf for %s\n%s\nSensor pos: %s\nreadings %s" %(msg.header.frame_id, tf_msg, str(trans), str(valid_data)))
+            #rospy.logdebug_throttle(1, "Received LaserScan msg\n%s" % str(msg))
+            #if msg.header.frame_id == "laser_front": rospy.logdebug_throttle(1, "Processed LaserScan msg from frame %s\nTotal readings: %d, discarded: %d\n" % (msg.header.frame_id, len(ranges), raw_data.shape[0]-valid_data.shape[0]))
+
+            self.planner.update_obstacle_density(valid_data, trans)
 
     def pose_callback(self, msg):
         rospy.logdebug_throttle(1, "Received Pose2D message: %.2f, %.2f, %.2f" % (msg.x , msg.y, msg.theta) )
