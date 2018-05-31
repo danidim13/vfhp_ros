@@ -189,6 +189,8 @@ class VFHPModel:
         Posición del robot sobre el eje :math:`y`.
     cita : float
         Orientación del robot resepecto el eje :math:`z`.
+    rotation_matrix : ndarray
+        Matriz de rotacion del robot.
 
     i_0 : float
         Índice de la celda que ocupa el robot sobre la cuadrícula
@@ -287,6 +289,8 @@ class VFHPModel:
         self.x_0 = 0.0
         self.y_0 = 0.0
         self.cita = 0.0
+        self.rotation_matrix = np.array([[1, 0],
+                                         [0, 1]], dtype=np.float_)
 
         # Cell of the robot
         self.i_0 = 0
@@ -370,18 +374,22 @@ class VFHPModel:
             * :attr:`i_0`
             * :attr:`j_0`
             * :attr:`k_0`
+            * :attr:`rotation_matrix`
 
         """
         self.x_0 = x
         self.y_0 = y
         self.cita = cita if cita >= 0 else cita + 360
+        radians = math.radians(cita)
+        self.rotation_matrix = np.array([[math.cos(radians), -math.sin(radians)],
+                                         [math.sin(radians), math.cos(radians)]])
 
         self.i_0 = int(x / RESOLUTION)
         self.j_0 = int(y / RESOLUTION)
         self.k_0 = int(self.cita / ALPHA)%HIST_SIZE
 
 
-    def update_obstacle_density(self, sensor_readings):
+    def update_obstacle_density(self, sensor_readings, translation=np.zeros(2,dtype=np.float_)):
         r"""Actualiza la cuadrícula de certeza a partir de las
         lecturas de un sensor.
 
@@ -398,6 +406,10 @@ class VFHPModel:
             lecturas, donde cada par representa una coordenada
             polar :math:`(r,\theta)` respecto al marco de
             referencia del robot.
+
+        translation : ndarray
+            Una traslación (x, y) que representa la posición del sensor
+            respecto al marco de referencia del robot.
 
         Raises
         ------
@@ -425,12 +437,13 @@ class VFHPModel:
         elif sensor_readings.ndim != 2 or sensor_readings.shape[1] != 2:
             raise ValueError("Expected (n, 2) array, received %s" % str(sensor_readings.shape))
 
-        valid_readings = sensor_readings[sensor_readings[:,0] > 0.0]
-        
-        i = np.int_( (self.x_0 + valid_readings[:, 0]*np.cos(valid_readings[:, 1] + np.radians(self.cita)))/RESOLUTION )
-        j = np.int_( (self.y_0 + valid_readings[:, 0]*np.sin(valid_readings[:, 1] + np.radians(self.cita)))/RESOLUTION )
+        #valid_readings = sensor_readings[sensor_readings[:,0] > 0.0]
+        reading_translation = np.matmul(self.rotation_matrix, translation)
 
-        for x in xrange(valid_readings.shape[0]):
+        i = np.int_( (self.x_0 + reading_translation[0] + sensor_readings[:, 0]*np.cos(sensor_readings[:, 1] + math.radians(self.cita)))/RESOLUTION )
+        j = np.int_( (self.y_0 + reading_translation[1] + sensor_readings[:, 0]*np.sin(sensor_readings[:, 1] + math.radians(self.cita)))/RESOLUTION )
+
+        for x in xrange(sensor_readings.shape[0]):
             if self.obstacle_grid[i[x],j[x]] < C_MAX: self.obstacle_grid[i[x], j[x]] += 1
 
     def update_obstacle_density3(self, sensor_readings):
@@ -872,6 +885,20 @@ class VFHPModel:
     def _dist(array,i,j):
         n_dist = abs(i-j)
         return min(n_dist, len(array) - n_dist)
+
+    def _plot_active(self):
+        plt.figure(1)
+        plt.pcolor(self._active_grid().T, alpha=0.75, edgecolors='k',vmin=0,vmax=20)
+        plt.xlabel("X")
+        plt.ylabel("Y", rotation='horizontal')
+        plt.show()
+
+    def _plot_grid(self):
+        plt.figure(1)
+        plt.pcolor(self.obstacle_grid.T, alpha=0.75, edgecolors='k',vmin=0,vmax=20)
+        plt.xlabel("X")
+        plt.ylabel("Y", rotation='horizontal')
+        plt.show()
 
 
 def main():
