@@ -348,6 +348,12 @@ class VFHPModel:
             self.target = None
             return 0
 
+    def get_target_dist(self):
+        if self.target:
+            return math.sqrt((self.x_0-self.target[0])**2 + (self.y_0-self.target[1])**2)
+        else:
+            return 0
+
     def update_position(self, x, y, cita):
         r"""Actualiza la posición del robot.
 
