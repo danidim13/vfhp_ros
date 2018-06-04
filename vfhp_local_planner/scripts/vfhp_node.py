@@ -9,11 +9,13 @@ import tf2_ros
 
 import rospy
 
+import threading
+
 from rospy.numpy_msg import numpy_msg
-from std_msgs.msg import *
 from geometry_msgs.msg import Twist, Pose2D
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
+from mecanumrob_common.srv import SetGoal, SetGoalResponse
 import Planners.VFHP as vfhp
 
 class VFHPNode(object):
@@ -29,8 +31,10 @@ class VFHPNode(object):
         self.robot_frame_id = rospy.get_param("~robot_frame_id", default="mecanum_base")
         self.DECAY_RATE = rospy.get_param("~decay_rate", default=90)
 
+
         self.goal_reached = True
         self.goal = np.zeros(2,dtype=np.float64)
+        self.goal_lock = threading.Lock()
 
         ## Parámetros propios del algoritmo VFH+
         ## Para más información ver documentación del módulo VFH
@@ -86,6 +90,10 @@ class VFHPNode(object):
 
         self.planner.update_position(self.X_BIAS, self.Y_BIAS, 0.0)
 
+        # Publishers
+        self.cmd_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
+        #self.map_pub = rospy.Publisher('obstacle_grid', data_class, queue_size=3)
+
         # Subscribers
         self.odom_sub = rospy.Subscriber('odom', Odometry, self.odom_callback)
         self.laser_front_sub = rospy.Subscriber('scan_front', numpy_msg(LaserScan), self.laser_callback)
@@ -95,9 +103,8 @@ class VFHPNode(object):
         self.TfBuffer = tf2_ros.Buffer(cache_time = rospy.Duration(secs=5))
         self.TfListener = tf2_ros.TransformListener(self.TfBuffer)
 
-        # Publishers
-        self.cmd_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
-        #self.map_pub = rospy.Publisher('obstacle_grid', data_class, queue_size=3)
+        # Services
+        self.goal_srv = rospy.Service("set_goal", SetGoal, self.set_goal_callback)
 
         rospy.on_shutdown(self.planner._plot_active)
 
@@ -148,6 +155,47 @@ class VFHPNode(object):
         rospy.logdebug_throttle(1, "Received Pose2D message: %.2f, %.2f, %.2f" % (msg.x , msg.y, msg.theta) )
         self.planner.update_position(msg.x + self.X_BIAS, msg.y + self.Y_BIAS, math.degrees(msg.theta))
 
+    def set_goal_callback(self, req):
+        if req.set:
+            x_targ = req.x + self.X_BIAS
+            y_targ = req.y + self.Y_BIAS
+
+            if (x_targ < 0 or y_targ < 0
+                    or self.resolution*self.grid_size < x_targ
+                    or self.resolution*self.grid_size < y_targ):
+                return SetGoalResponse(False, 'Target out of bounds')
+            else:
+
+                # XXX: Crital Section Start
+                self.goal_lock.acquire()
+                self.goal_reached = False
+                self.goal[0] = req.x
+                self.goal[1] = req.y
+                self.planner.set_target(x_targ, y_targ)
+                self.goal_lock.release()
+                # XXX: Crital Section End
+
+                return SetGoalResponse(True, '')
+            #DO stuff
+        else:
+            self.goal_reached = True
+            return SetGoalResponse(True, '')
+
+    def check_goal_reached(self):
+
+
+        # XXX: Crital Section Start
+        self.goal_lock.acquire()
+
+        if not self.goal_reached and self.planner.get_target_dist() < self.r_rob/2:
+                self.goal_reached = True
+
+        self.goal_lock.release()
+        # XXX: Crital Section End
+
+        return
+
+
     def pub_cmd_vel(self, theta, v):
         # TODO:
         # Definir como se va a manejar la publicación de mensajes
@@ -168,7 +216,10 @@ class VFHPNode(object):
                 self.planner.update_masked_polar_hist(self.r_rob, self.r_rob)
                 valles = self.planner.find_valleys()
                 cita, v = self.planner.calculate_steering_dir(valles)
+                self.check_goal_reached()
+                rospy.logdebug_throttle(2, "Heading to %s at %s m/s." % (cita, v))
             else:
+                rospy.logdebug_throttle(2, "No goal set.")
                 cita = 0
                 v = 0
 
@@ -177,7 +228,7 @@ class VFHPNode(object):
             if it  > 100:
                 self.planner.decay_active_window(1, 3)
                 it -= 100
-                
+
             it += self.DECAY_RATE
 
             rate.sleep()
