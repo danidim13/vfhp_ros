@@ -27,6 +27,7 @@ class VFHPNode(object):
 
         self.world_frame_id = rospy.get_param("~world_frame_id", default="world")
         self.robot_frame_id = rospy.get_param("~robot_frame_id", default="mecanum_base")
+        self.DECAY_RATE = rospy.get_param("~decay_rate", default=90)
 
         self.goal_reached = True
         self.goal = np.zeros(2,dtype=np.float64)
@@ -35,7 +36,7 @@ class VFHPNode(object):
         ## Para más información ver documentación del módulo VFH
         self.grid_size = rospy.get_param('~grid_size', default=125)
         self.c_max = rospy.get_param('~c_max', default=20)
-        self.resolution = rospy.get_param('~resolution', default =0.35)
+        self.resolution = rospy.get_param('~resolution', default =0.15)
         self.window_size = rospy.get_param('~window_size', default=25)
         self.window_center = self.window_size/2
         self.alpha = rospy.get_param('~alpha', default=5)
@@ -121,7 +122,7 @@ class VFHPNode(object):
             # TODO:
             # Si las transformaciones son fijas se podrían buscar una única vez,
             # la primera vez que se recibe un mensaje, y guardar la info.
-            
+
             tf_msg = self.TfBuffer.lookup_transform(self.robot_frame_id, msg.header.frame_id, rospy.Time(0))
 
             quat = np.array([tf_msg.transform.rotation.x,
@@ -137,7 +138,7 @@ class VFHPNode(object):
             raw_data = np.column_stack((ranges,angles))
             valid_data = raw_data[(raw_data[:,0] > msg.range_min) & (raw_data[:,0] < msg.range_max)]
 
-            rospy.logdebug_throttle(1, "Laser tf for %s\n%s\nSensor pos: %s\nreadings %s" %(msg.header.frame_id, tf_msg, str(trans), str(valid_data)))
+            #rospy.logdebug_throttle(1, "Laser tf for %s\n%s\nSensor pos: %s\nreadings %s" %(msg.header.frame_id, tf_msg, str(trans), str(valid_data)))
             #rospy.logdebug_throttle(1, "Received LaserScan msg\n%s" % str(msg))
             #if msg.header.frame_id == "laser_front": rospy.logdebug_throttle(1, "Processed LaserScan msg from frame %s\nTotal readings: %d, discarded: %d\n" % (msg.header.frame_id, len(ranges), raw_data.shape[0]-valid_data.shape[0]))
 
@@ -156,6 +157,8 @@ class VFHPNode(object):
 
         rate = rospy.Rate(10)
 
+        # Aprox cada 0.5 s
+        it = 0
         while not rospy.is_shutdown():
 
             if not self.goal_reached:
@@ -168,7 +171,14 @@ class VFHPNode(object):
             else:
                 cita = 0
                 v = 0
+
             self.pub_cmd_vel(cita, v)
+
+            if it  > 100:
+                self.planner.decay_active_window(1, 3)
+                it -= 100
+                
+            it += self.DECAY_RATE
 
             rate.sleep()
 
