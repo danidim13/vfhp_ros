@@ -460,6 +460,27 @@ class VFHPModel:
             j = int( (self.y_0 + r*math.sin(theta + math.radians(self.cita)))/RESOLUTION )
             if self.obstacle_grid[i,j] < C_MAX: self.obstacle_grid[i,j] += 1
 
+    def decay_active_window(self, decay=1, guardband=0):
+        r""" Decrementa en la certeza de las celdas de la ventana activa.
+
+        Se decrementan únicamente las celdas mayores a cero.
+
+        Parameters
+        ----------
+        decay : int
+            Indica el decremento a aplicar.
+
+        """
+        i_window = max(self.i_0 - (WINDOW_CENTER + guardband), 0)
+        j_window = max(self.j_0 - (WINDOW_CENTER + guardband), 0)
+        i_max = min(i_window + WINDOW_SIZE + guardband, GRID_SIZE)
+        j_max = min(j_window + WINDOW_SIZE + guardband, GRID_SIZE)
+
+        # NOTE:
+        # Entiéndase ->
+        # A los valores de la ventana activa ([i_window:i_max, j_window:j_max])
+        # Cuyo valor es mayor a decay, réstele decay.
+        self.obstacle_grid[i_window:i_max, j_window:j_max][self.obstacle_grid[i_window:i_max, j_window:j_max] >= decay] -= decay
 
     def _active_grid(self):
 
@@ -776,6 +797,7 @@ class VFHPModel:
         new_dir  : float
             La dirección del movimiento, dada en grados en el
             rango  :math:`[0°,\:360°[` .
+        .. ]
         V : float
             La velocidad del robot.
 
@@ -792,7 +814,6 @@ class VFHPModel:
         candidata, el medio del valle. Los anchos pueden definir
         hasta tres: los bordes del valle y la dirección del
         objetivo si esta se encuentra dentro del valle.
-        .. ]
 
         """
 
