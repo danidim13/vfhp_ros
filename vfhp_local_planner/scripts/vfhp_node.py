@@ -198,8 +198,12 @@ class VFHPNode(object):
 
     def pub_cmd_vel(self, theta, v):
         # TODO:
-        # Definir como se va a manejar la publicación de mensajes
-        pass
+        msg = Twist()
+        msg.linear.x = v*math.cos(math.radians(theta) - math.radians(self.planner.cita))
+        msg.linear.y = v*math.sin(math.radians(theta) - math.radians(self.planner.cita))
+        msg.angular.z = 0.0
+        self.cmd_pub.publish(msg)
+        return
 
     def run(self):
 
