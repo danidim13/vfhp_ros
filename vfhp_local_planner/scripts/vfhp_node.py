@@ -27,20 +27,22 @@ class VFHPNode(object):
 
         ## Parámetros ROS
 
-        self.world_frame_id = rospy.get_param("~world_frame_id", default="world")
-        self.robot_frame_id = rospy.get_param("~robot_frame_id", default="mecanum_base")
-        self.DECAY_RATE = rospy.get_param("~decay_rate", default=90)
+        self.world_frame_id = rospy.get_param('~world_frame_id', default='world')
+        self.robot_frame_id = rospy.get_param('~robot_frame_id', default='mecanum_base')
+        self.DECAY_RATE = rospy.get_param('~decay_rate', default=50)
 
 
         self.goal_reached = True
         self.goal = np.zeros(2,dtype=np.float64)
         self.goal_lock = threading.Lock()
 
+        self.obstacle_lock = threading.Lock()
+
         ## Parámetros propios del algoritmo VFH+
         ## Para más información ver documentación del módulo VFH
         self.grid_size = rospy.get_param('~grid_size', default=125)
         self.c_max = rospy.get_param('~c_max', default=20)
-        self.resolution = rospy.get_param('~resolution', default =0.15)
+        self.resolution = rospy.get_param('~resolution', default=0.15)
         self.window_size = rospy.get_param('~window_size', default=25)
         self.window_center = self.window_size/2
         self.alpha = rospy.get_param('~alpha', default=5)
@@ -49,16 +51,16 @@ class VFHPNode(object):
         self.kb = np.float_(10.0)
         self.ka = np.float_(1+self.kb*self.d_max2)
         self.r_rob = rospy.get_param('~robot_radius', default=0.478)
-        self.d_s = rospy.get_param('~d_s',default=0.05)
+        self.d_s = rospy.get_param('~d_s', default=0.05)
         self.r_rs = self.r_rob + self.d_s
-        self.t_lo = rospy.get_param('~t_lo',default=3000.0)
-        self.t_hi = rospy.get_param('~t_hi', default=3500.0)
+        self.t_lo = rospy.get_param('~t_lo', default=175000.0)
+        self.t_hi = rospy.get_param('~t_hi', default=200000.0)
         self.wide_v = self.hist_size/8
         self.v_max = rospy.get_param('~v_max', default=0.41)
         self.v_min = rospy.get_param('~v_min', default=0.0)
-        self.mu1 = rospy.get_param('~mu1', 6.0)
-        self.mu2 = rospy.get_param('~mu2', 2.0)
-        self.mu3 = rospy.get_param('~mu3', 2.0)
+        self.mu1 = rospy.get_param('~mu1', default=6.0)
+        self.mu2 = rospy.get_param('~mu2', default=2.0)
+        self.mu3 = rospy.get_param('~mu3', default=2.0)
         self.max_cost = 180.0*(self.mu1 + self.mu2 + self.mu3)
 
         vfhp.GRID_SIZE = self.grid_size
@@ -72,6 +74,8 @@ class VFHPNode(object):
         vfhp.B = self.kb
         vfhp.A = self.ka
         vfhp.R_ROB = self.r_rob
+        vfhp.D_S = self.d_s
+        vfhp.R_RS = self.r_rs
         vfhp.T_LO = self.t_lo
         vfhp.T_HI = self.t_hi
         vfhp.WIDE_V = self.wide_v
@@ -106,7 +110,7 @@ class VFHPNode(object):
         # Services
         self.goal_srv = rospy.Service("set_goal", SetGoal, self.set_goal_callback)
 
-        rospy.on_shutdown(self.planner._plot_active)
+        rospy.on_shutdown(self.shutdown)
 
     def odom_callback(self, msg):
         x = msg.pose.pose.position.x
@@ -149,7 +153,9 @@ class VFHPNode(object):
             #rospy.logdebug_throttle(1, "Received LaserScan msg\n%s" % str(msg))
             #if msg.header.frame_id == "laser_front": rospy.logdebug_throttle(1, "Processed LaserScan msg from frame %s\nTotal readings: %d, discarded: %d\n" % (msg.header.frame_id, len(ranges), raw_data.shape[0]-valid_data.shape[0]))
 
+            self.obstacle_lock.acquire()
             self.planner.update_obstacle_density(valid_data, trans)
+            self.obstacle_lock.release()
 
     def pose_callback(self, msg):
         rospy.logdebug_throttle(1, "Received Pose2D message: %.2f, %.2f, %.2f" % (msg.x , msg.y, msg.theta) )
@@ -215,11 +221,12 @@ class VFHPNode(object):
         it = 0
         while not rospy.is_shutdown():
 
+            self.planner.update_active_window()
+            self.planner.update_polar_histogram()
+            self.planner.update_bin_polar_histogram()
+            self.planner.update_masked_polar_hist(0, 0, True)
+
             if not self.goal_reached:
-                self.planner.update_active_window()
-                self.planner.update_polar_histogram()
-                self.planner.update_bin_polar_histogram()
-                self.planner.update_masked_polar_hist(self.r_rob, self.r_rob)
                 valles = self.planner.find_valleys()
                 cita, v = self.planner.calculate_steering_dir(valles)
                 self.check_goal_reached()
@@ -238,6 +245,13 @@ class VFHPNode(object):
             it += self.DECAY_RATE
 
             rate.sleep()
+
+    def shutdown(self):
+        self.planner._plot_active(1)
+        self.planner._plot_hist(2)
+        self.planner._plot_show()
+
+
 
 
 
