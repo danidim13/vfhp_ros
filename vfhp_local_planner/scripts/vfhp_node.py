@@ -48,13 +48,13 @@ class VFHPNode(object):
         self.d_max2 = np.square((self.window_size-1)*self.resolution)/2.0
         self.kb = np.float_(10.0)
         self.ka = np.float_(1+self.kb*self.d_max2)
-        self.r_rob = rospy.get_param('~robot_radius', default=0.755)
+        self.r_rob = rospy.get_param('~robot_radius', default=0.478)
         self.d_s = rospy.get_param('~d_s',default=0.05)
         self.r_rs = self.r_rob + self.d_s
         self.t_lo = rospy.get_param('~t_lo',default=3000.0)
         self.t_hi = rospy.get_param('~t_hi', default=3500.0)
         self.wide_v = self.hist_size/8
-        self.v_max = rospy.get_param('~v_max', default=0.31)
+        self.v_max = rospy.get_param('~v_max', default=0.41)
         self.v_min = rospy.get_param('~v_min', default=0.0)
         self.mu1 = rospy.get_param('~mu1', 6.0)
         self.mu2 = rospy.get_param('~mu2', 2.0)
@@ -176,7 +176,7 @@ class VFHPNode(object):
                 # XXX: Crital Section End
 
                 return SetGoalResponse(True, '')
-            #DO stuff
+
         else:
             self.goal_reached = True
             return SetGoalResponse(True, '')
@@ -187,7 +187,7 @@ class VFHPNode(object):
         # XXX: Crital Section Start
         self.goal_lock.acquire()
 
-        if not self.goal_reached and self.planner.get_target_dist() < self.r_rob/2:
+        if not self.goal_reached and self.planner.get_target_dist() < self.r_rob/3:
                 self.goal_reached = True
 
         self.goal_lock.release()
@@ -198,6 +198,8 @@ class VFHPNode(object):
 
     def pub_cmd_vel(self, theta, v):
         # TODO:
+        # Decidir que hacer con theta
+
         msg = Twist()
         msg.linear.x = v*math.cos(math.radians(theta) - math.radians(self.planner.cita))
         msg.linear.y = v*math.sin(math.radians(theta) - math.radians(self.planner.cita))
