@@ -247,15 +247,18 @@ class VFHPModel:
         # Initialize angles and distance (these don't change)
 
         print "INITIALIZING"
+        centro = WINDOW_SIZE*RESOLUTION/2.0
         for i in xrange(WINDOW_SIZE):
             for j in xrange(WINDOW_SIZE):
                 if j == WINDOW_CENTER and i == WINDOW_CENTER:
                     continue
-                beta_p = np.degrees(np.arctan2(j-WINDOW_CENTER, i-WINDOW_CENTER))
+                celda_x = (i + 0.5)*RESOLUTION
+                celda_y = (j + 0.5)*RESOLUTION
+                beta_p = np.degrees(np.arctan2(celda_y-centro, celda_x-centro))
                 self.active_window[i,j,BETA] = beta_p + 360 if beta_p < 0 else beta_p
                 # The distance is measured in terms of cells
                 # (independent of scale/resolution of the grid)
-                dist2 = np.square(RESOLUTION)*np.float_(np.square(i-WINDOW_CENTER) + np.square(j-WINDOW_CENTER))
+                dist2 = np.square(celda_x - centro) + np.square(celda_y - centro)
                 self.active_window[i,j,DIST2] = dist2
                 self.active_window[i,j,ABDIST] = A - B*dist2
                 self.active_window[i,j,GAMA] = np.degrees(np.arcsin(np.float_(R_RS)/np.sqrt(dist2)))
@@ -560,9 +563,9 @@ class VFHPModel:
                 #print beta, type(beta), gama, type(gama), alfa, type(alfa)
 
                 # Determine the range of histogram sectors that needs to be updated
-                low = int(np.ceil((self.active_window[i,j,BETA] - self.active_window[i,j,GAMA])/ALPHA))
+                low = int(np.floor((self.active_window[i,j,BETA] - self.active_window[i,j,GAMA])/ALPHA))
                 #print low
-                high = int(np.floor((self.active_window[i,j,BETA] + self.active_window[i,j,GAMA])/ALPHA))
+                high = int(np.ceil((self.active_window[i,j,BETA] + self.active_window[i,j,GAMA])/ALPHA))
                 #print high
                 #print "Updating sectors [{:d} {:d}] for cell ({:d}, {:d})".format(low, high, i, j)
                 k_range = [x%HIST_SIZE for x in np.linspace(low, high, high-low+1, True, dtype = int)]
@@ -596,7 +599,7 @@ class VFHPModel:
 
             self.bin_polar_hist[k] = blocked
 
-    def update_masked_polar_hist(self,steer_l,steer_r):
+    def update_masked_polar_hist(self,steer_l,steer_r, omni=False):
         r"""Calcula el histograma polar mascarado.
 
         El cálculo se hace a partir del
@@ -619,6 +622,10 @@ class VFHPModel:
          * :attr:`masked_polar_hist`
         """
 
+
+        if omni:
+            self.masked_polar_hist[:] = self.bin_polar_hist[:]
+            return
 
         phi_back = self.cita + 180.0
         phi_back = phi_back - 360.0 if phi_back > 360.0 else phi_back
@@ -913,18 +920,34 @@ class VFHPModel:
         n_dist = abs(i-j)
         return min(n_dist, len(array) - n_dist)
 
-    def _plot_active(self):
-        plt.figure(1)
-        plt.pcolor(self._active_grid().T, alpha=0.75, edgecolors='k',vmin=0,vmax=20)
+    def _plot_active(self, i):
+        plt.figure(i)
+        plt.pcolor(self._active_grid().T, alpha=0.75, edgecolors='k',vmin=0,vmax=C_MAX)
         plt.xlabel("X")
         plt.ylabel("Y", rotation='horizontal')
-        plt.show()
+        plt.title("Ventana activa")
 
-    def _plot_grid(self):
-        plt.figure(1)
-        plt.pcolor(self.obstacle_grid.T, alpha=0.75, edgecolors='k',vmin=0,vmax=20)
+
+    def _plot_grid(self, i):
+        plt.figure(i)
+        plt.pcolor(self.obstacle_grid.T, alpha=0.75, edgecolors='k',vmin=0,vmax=C_MAX)
         plt.xlabel("X")
         plt.ylabel("Y", rotation='horizontal')
+        plt.title("cuadrícula d")
+
+
+    def _plot_hist(self, i):
+        plt.figure(i)
+        phi = np.radians([ALPHA*x for x in range(len(self.polar_hist))])
+        low = [T_LO for x in xrange(len(self.polar_hist))]
+        high = [T_HI for x in xrange(len(self.polar_hist))]
+        #i = [a for a in range(len(self.polar_hist))]
+        plt.polar(phi, self.polar_hist, color='r')
+        plt.polar(phi, low, color='b')
+        plt.polar(phi, high, color='g')
+        plt.title("Histograma polar")
+
+    def _plot_show(self):
         plt.show()
 
 
