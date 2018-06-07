@@ -60,7 +60,7 @@ r"""int: Tamaño de cada sector del histograma polar (en grados).
 .. warning::
     ``ALPHA`` debe ser un divisor de 360.
 """
-assert np.mod(360, ALPHA) == 0, "Alpha must define an int amount of sectors"
+assert 360 % ALPHA == 0, "Alpha must define an int amount of sectors"
 
 HIST_SIZE = 360/ALPHA
 r"""int: Cantidad de sectores en el histograma polar.
@@ -70,7 +70,7 @@ Se define automáticamente a partir de ``ALPHA``.
 # Constants for virtual vector magnitude calculations
 # D_max^2 = 2*(ws-1/2)^2*R^2
 # A - B*D_max^2 = 1
-D_max2 = np.square((WINDOW_SIZE-1)*RESOLUTION)/2.0
+D_max2 = math.pow((WINDOW_SIZE-1)*RESOLUTION, 2)/2.0
 B = np.float_(10.0)
 r"""float: Constante :math:`b` de la ecuación de la magnitud del
 vector de obstáculos.
@@ -254,14 +254,17 @@ class VFHPModel:
                     continue
                 celda_x = (i + 0.5)*RESOLUTION
                 celda_y = (j + 0.5)*RESOLUTION
-                beta_p = np.degrees(np.arctan2(celda_y-centro, celda_x-centro))
+                beta_p = math.degrees(math.atan2(celda_y-centro, celda_x-centro))
                 self.active_window[i,j,BETA] = beta_p + 360 if beta_p < 0 else beta_p
                 # The distance is measured in terms of cells
                 # (independent of scale/resolution of the grid)
-                dist2 = np.square(celda_x - centro) + np.square(celda_y - centro)
+                dist2 = (celda_x - centro)**2.0 + (celda_y - centro)**2.0
                 self.active_window[i,j,DIST2] = dist2
                 self.active_window[i,j,ABDIST] = A - B*dist2
-                self.active_window[i,j,GAMA] = np.degrees(np.arcsin(np.float_(R_RS)/np.sqrt(dist2)))
+                if R_RS > math.sqrt(dist2):
+                    self.active_window[i,j,GAMA] = 90.0
+                else:
+                    self.active_window[i,j,GAMA] = math.degrees(math.asin(R_RS/math.sqrt(dist2)))
                 if np.isnan(self.active_window[i,j,GAMA]):
                     print "cell ({:d},{:d}) gamma = ".format(i,j), self.active_window[i,j,GAMA]
                     print "setting to 90.0"
@@ -270,7 +273,7 @@ class VFHPModel:
                     #print np.sqrt(dist2)
                     #print np.float_(R_RS)/np.sqrt(dist2)
                     #print "arcoseno ", np.arcsin(np.float_(R_RS)/np.sqrt(dist2))
-                    self.active_window[i,j,GAMA] = np.float_(90.0)
+                    self.active_window[i,j,GAMA] = 90.0
 
         # The Polar Histogram maps each cell in the active window
         # to one or more angular sector
@@ -514,6 +517,8 @@ class VFHPModel:
 
         """
 
+        # TODO: vectorizar
+
         i_window = self.i_0 - (WINDOW_CENTER)
         j_window = self.j_0 - (WINDOW_CENTER)
         for i in xrange(WINDOW_SIZE):
@@ -548,31 +553,24 @@ class VFHPModel:
 
         """
 
-        for i in xrange(HIST_SIZE):
-            self.polar_hist[i] = 0
+        self.polar_hist[:] = 0
 
         for i in xrange(WINDOW_SIZE):
             for j in xrange(WINDOW_SIZE):
                 if j == WINDOW_CENTER and i == WINDOW_CENTER:
                     continue
 
-                #print "Determine ranges for cell ({:d}, {:d}".format(i,j)
-                beta = self.active_window[i,j,BETA]
-                gama = self.active_window[i,j,GAMA]
-                alfa = ALPHA
-                #print beta, type(beta), gama, type(gama), alfa, type(alfa)
-
-                # Determine the range of histogram sectors that needs to be updated
                 low = int(np.floor((self.active_window[i,j,BETA] - self.active_window[i,j,GAMA])/ALPHA))
-                #print low
+
                 high = int(np.ceil((self.active_window[i,j,BETA] + self.active_window[i,j,GAMA])/ALPHA))
-                #print high
-                #print "Updating sectors [{:d} {:d}] for cell ({:d}, {:d})".format(low, high, i, j)
+
+
                 k_range = [x%HIST_SIZE for x in np.linspace(low, high, high-low+1, True, dtype = int)]
-                #print k_range
-                for k in k_range:
-                    assert k < HIST_SIZE and k >= 0, "Error for polar histogram index: %d on i = %d, j = %d" % (k, i, j)
-                    self.polar_hist[k] += self.active_window[i, j, MAG]
+
+                self.polar_hist[k_range] += self.active_window[i, j, MAG]
+                #for k in k_range:
+                    #assert k < HIST_SIZE and k >= 0, "Error for polar histogram index: %d on i = %d, j = %d" % (k, i, j)
+                    #self.polar_hist[k] += self.active_window[i, j, MAG]
 
         #return self.polar_hist
 
@@ -589,15 +587,18 @@ class VFHPModel:
 
         """
 
-        for k in xrange(HIST_SIZE):
-            if self.polar_hist[k] > T_HI:
-                blocked = True
-            elif self.polar_hist[k] < T_LO:
-                blocked = False
-            else:
-                blocked = self.bin_polar_hist[k]
+        self.bin_polar_hist[self.polar_hist > T_HI] = True
+        self.bin_polar_hist[self.polar_hist < T_LO] = False
 
-            self.bin_polar_hist[k] = blocked
+        # for k in xrange(HIST_SIZE):
+        #     if self.polar_hist[k] > T_HI:
+        #         blocked = True
+        #     elif self.polar_hist[k] < T_LO:
+        #         blocked = False
+        #     else:
+        #         blocked = self.bin_polar_hist[k]
+        #
+        #     self.bin_polar_hist[k] = blocked
 
     def update_masked_polar_hist(self,steer_l,steer_r, omni=False):
         r"""Calcula el histograma polar mascarado.
