@@ -48,7 +48,7 @@ class VFHPNode(object):
         self.alpha = rospy.get_param('~alpha', default=5)
         self.hist_size = 360/self.alpha
         self.d_max2 = np.square((self.window_size-1)*self.resolution)/2.0
-        self.kb = np.float_(10.0)
+        self.kb = rospy.get_param('~kb', default=10.0)
         self.ka = np.float_(1+self.kb*self.d_max2)
         self.r_rob = rospy.get_param('~robot_radius', default=0.478)
         self.d_s = rospy.get_param('~d_s', default=0.05)
@@ -110,7 +110,7 @@ class VFHPNode(object):
         # Services
         self.goal_srv = rospy.Service("set_goal", SetGoal, self.set_goal_callback)
 
-        rospy.on_shutdown(self.shutdown)
+        #rospy.on_shutdown(self.draw_graphics)
 
     def odom_callback(self, msg):
         x = msg.pose.pose.position.x
@@ -246,7 +246,7 @@ class VFHPNode(object):
 
             rate.sleep()
 
-    def shutdown(self):
+    def draw_graphics(self):
         self.planner._plot_active(1)
         self.planner._plot_hist(2)
         self.planner._plot_show()
