@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  std_srvs
   sensor_msgs
   tf2
   tf2_ros
@@ -111,7 +112,7 @@ catkin_python_setup()
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES vfhp_local_planner
-  CATKIN_DEPENDS mecanumrob_common geometry_msgs nav_msgs roscpp rospy std_msgs sensor_msgs tf2 tf2_ros
+  CATKIN_DEPENDS mecanumrob_common geometry_msgs nav_msgs roscpp rospy std_msgs sensor_msgs tf2 tf2_ros std_srvs
 #  DEPENDS system_lib
 )
 

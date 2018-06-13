@@ -531,6 +531,7 @@ class VFHPModel:
 
                 if grid_i < 0 or grid_i > GRID_SIZE or grid_j < 0 or grid_j > GRID_SIZE:
                     self.active_window[i,j,MAG] = 0.0
+                    print 'TRIMMING cell (%d,%d)' % (grid_i, grid_j)
                 else :
                     cij = np.float_(self.obstacle_grid[grid_i, grid_j])
                     self.active_window[i,j,MAG] = np.square(cij)*self.active_window[i,j,ABDIST]
@@ -553,7 +554,7 @@ class VFHPModel:
 
         """
 
-        self.polar_hist[:] = 0
+        self.polar_hist[:] = 0.0
 
         for i in xrange(WINDOW_SIZE):
             for j in xrange(WINDOW_SIZE):
@@ -566,11 +567,13 @@ class VFHPModel:
 
 
                 k_range = [x%HIST_SIZE for x in np.linspace(low, high, high-low+1, True, dtype = int)]
+                #print "DEBUG: celda (%d, %d)" % (i, j)
+                #print k_range
 
-                self.polar_hist[k_range] += self.active_window[i, j, MAG]
-                #for k in k_range:
+                #self.polar_hist[k_range] += self.active_window[i, j, MAG]
+                for k in k_range:
                     #assert k < HIST_SIZE and k >= 0, "Error for polar histogram index: %d on i = %d, j = %d" % (k, i, j)
-                    #self.polar_hist[k] += self.active_window[i, j, MAG]
+                    self.polar_hist[k] += self.active_window[i, j, MAG]
 
         #return self.polar_hist
 
@@ -921,9 +924,16 @@ class VFHPModel:
         n_dist = abs(i-j)
         return min(n_dist, len(array) - n_dist)
 
-    def _plot_active(self, i):
+    def _plot_active_grid(self, i):
         plt.figure(i)
         plt.pcolor(self._active_grid().T, alpha=0.75, edgecolors='k',vmin=0,vmax=C_MAX)
+        plt.xlabel("X")
+        plt.ylabel("Y", rotation='horizontal')
+        plt.title("Ventana activa")
+
+    def _plot_active_window(self, i):
+        plt.figure(i)
+        plt.pcolor(self.active_window[:,:,MAG].T, alpha=0.75, edgecolors='k')
         plt.xlabel("X")
         plt.ylabel("Y", rotation='horizontal')
         plt.title("Ventana activa")
@@ -939,13 +949,16 @@ class VFHPModel:
 
     def _plot_hist(self, i):
         plt.figure(i)
-        phi = np.radians([ALPHA*x for x in range(len(self.polar_hist))])
-        low = [T_LO for x in xrange(len(self.polar_hist))]
-        high = [T_HI for x in xrange(len(self.polar_hist))]
+        phi = np.radians([ALPHA*x for x in xrange(HIST_SIZE)])
+        low = [T_LO for x in xrange(HIST_SIZE)]
+        high = [T_HI for x in xrange(HIST_SIZE)]
         #i = [a for a in range(len(self.polar_hist))]
-        plt.polar(phi, self.polar_hist, color='r')
-        plt.polar(phi, low, color='b')
-        plt.polar(phi, high, color='g')
+        #plt.polar(phi, self.polar_hist, color='r')
+        #plt.polar(phi, low, color='b')
+        #plt.polar(phi, high, color='g')
+        plt.polar(phi, self.polar_hist, color='y')
+        plt.polar(phi, low, color ='g')
+        plt.polar(phi, high, color ='r')
         plt.title("Histograma polar")
 
     def _plot_show(self):

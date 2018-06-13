@@ -16,6 +16,7 @@ from geometry_msgs.msg import Twist, Pose2D
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
 from mecanumrob_common.srv import SetGoal, SetGoalResponse
+from std_srvs.srv import Empty, EmptyResponse
 import Planners.VFHP as vfhp
 
 class VFHPNode(object):
@@ -109,6 +110,7 @@ class VFHPNode(object):
 
         # Services
         self.goal_srv = rospy.Service("set_goal", SetGoal, self.set_goal_callback)
+        self.draw_srv = rospy.Service("draw_hist", Empty, self.draw_hist_callback)
 
         #rospy.on_shutdown(self.draw_graphics)
 
@@ -187,6 +189,10 @@ class VFHPNode(object):
             self.goal_reached = True
             return SetGoalResponse(True, '')
 
+    def draw_hist_callback(self, req):
+        self.draw_graphics()
+        return EmptyResponse()
+
     def check_goal_reached(self):
 
 
@@ -247,8 +253,9 @@ class VFHPNode(object):
             rate.sleep()
 
     def draw_graphics(self):
-        self.planner._plot_active(1)
-        self.planner._plot_hist(2)
+        self.planner._plot_active_grid(1)
+        self.planner._plot_active_window(2)
+        self.planner._plot_hist(3)
         self.planner._plot_show()
 
 
