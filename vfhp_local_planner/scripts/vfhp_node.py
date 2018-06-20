@@ -28,7 +28,7 @@ class VFHPNode(object):
 
         ## Parámetros ROS
 
-        self.world_frame_id = rospy.get_param('~world_frame_id', default='world')
+        self.odom_frame_id = rospy.get_param('~odom_frame_id', default='odom')
         self.robot_frame_id = rospy.get_param('~robot_frame_id', default='mecanum_base')
         self.DECAY_RATE = rospy.get_param('~decay_rate', default=50)
 
