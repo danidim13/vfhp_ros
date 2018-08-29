@@ -150,8 +150,8 @@ class VFHPNode(object):
             y_targ = req.y + self.Y_BIAS
 
             if (x_targ < 0 or y_targ < 0
-                    or self.resolution*self.grid_size < x_targ
-                    or self.resolution*self.grid_size < y_targ):
+                    or self.vparams.RESOLUTION*self.vparams.GRID_SIZE < x_targ
+                    or self.vparams.RESOLUTION*self.vparams.GRID_SIZE < y_targ):
                 return SetGoalResponse(False, 'Target out of bounds')
             else:
 
@@ -180,7 +180,7 @@ class VFHPNode(object):
         # XXX: Crital Section Start
         self.goal_lock.acquire()
 
-        if not self.goal_reached and self.planner.get_target_dist() < self.r_rob/3:
+        if not self.goal_reached and self.planner.get_target_dist() < self.vparams.R_ROB/3:
                 self.goal_reached = True
 
         self.goal_lock.release()
