@@ -41,57 +41,29 @@ class VFHPNode(object):
 
         ## Parámetros propios del algoritmo VFH+
         ## Para más información ver documentación del módulo VFH
-        self.grid_size = rospy.get_param('~grid_size', default=125)
-        self.c_max = rospy.get_param('~c_max', default=20)
-        self.resolution = rospy.get_param('~resolution', default=0.15)
-        self.window_size = rospy.get_param('~window_size', default=25)
-        self.window_center = self.window_size/2
-        self.alpha = rospy.get_param('~alpha', default=5)
-        self.hist_size = 360/self.alpha
-        self.d_max2 = np.square((self.window_size-1)*self.resolution)/2.0
-        self.kb = rospy.get_param('~kb', default=10.0)
-        self.ka = np.float_(1+self.kb*self.d_max2)
-        self.r_rob = rospy.get_param('~robot_radius', default=0.478)
-        self.d_s = rospy.get_param('~d_s', default=0.05)
-        self.r_rs = self.r_rob + self.d_s
-        self.t_lo = rospy.get_param('~t_lo', default=175000.0)
-        self.t_hi = rospy.get_param('~t_hi', default=200000.0)
-        self.wide_v = self.hist_size/8
-        self.v_max = rospy.get_param('~v_max', default=0.41)
-        self.v_min = rospy.get_param('~v_min', default=0.0)
-        self.mu1 = rospy.get_param('~mu1', default=6.0)
-        self.mu2 = rospy.get_param('~mu2', default=2.0)
-        self.mu3 = rospy.get_param('~mu3', default=2.0)
-        self.max_cost = 180.0*(self.mu1 + self.mu2 + self.mu3)
-
-        vfhp.GRID_SIZE = self.grid_size
-        vfhp.C_MAX = self.c_max
-        vfhp.RESOLUTION = self.resolution
-        vfhp.WINDOW_SIZE = self.window_size
-        vfhp.WINDOW_CENTER = self.window_center
-        vfhp.ALPHA = self.alpha
-        vfhp.HIST_SIZE = self.hist_size
-        vfhp.D_max2 = self.d_max2
-        vfhp.B = self.kb
-        vfhp.A = self.ka
-        vfhp.R_ROB = self.r_rob
-        vfhp.D_S = self.d_s
-        vfhp.R_RS = self.r_rs
-        vfhp.T_LO = self.t_lo
-        vfhp.T_HI = self.t_hi
-        vfhp.WIDE_V = self.wide_v
-        vfhp.V_MAX = self.v_max
-        vfhp.V_MIN = self.v_min
-        vfhp.mu1 = self.mu1
-        vfhp.mu2 = self.mu2
-        vfhp.mu3 = self.mu3
-        vfhp.MAX_COST = self.max_cost
+        self.vparams = vfhp.VConst()
+        self.vparams.GRID_SIZE = rospy.get_param('~grid_size', default=125)
+        self.vparams.C_MAX = rospy.get_param('~c_max', default=20)
+        self.vparams.RESOLUTION = rospy.get_param('~resolution', default=0.15)
+        self.vparams.WINDOW_SIZE = rospy.get_param('~window_size', default=25)
+        self.vparams.ALPHA = rospy.get_param('~alpha', default=5)
+        self.vparams.B = rospy.get_param('~kb', default=10.0)
+        self.vparams.R_ROB = rospy.get_param('~robot_radius', default=0.478)
+        self.vparams.D_S = rospy.get_param('~d_s', default=0.05)
+        self.vparams.T_LO = rospy.get_param('~t_lo', default=175000.0)
+        self.vparams.T_HI = rospy.get_param('~t_hi', default=200000.0)
+        self.vparams.V_MAX = rospy.get_param('~v_max', default=0.41)
+        self.vparams.V_MIN = rospy.get_param('~v_min', default=0.0)
+        self.vparams.MU1 = rospy.get_param('~mu1', default=6.0)
+        self.vparams.MU2 = rospy.get_param('~mu2', default=2.0)
+        self.vparams.MU3 = rospy.get_param('~mu3', default=2.0)
+        self.vparams.update()
 
         ## Usar?
-        self.X_BIAS = self.grid_size*self.resolution/2.0
-        self.Y_BIAS = self.grid_size*self.resolution/2.0
+        self.X_BIAS = self.vparams.GRID_SIZE*self.vparams.RESOLUTION/2.0
+        self.Y_BIAS = self.vparams.GRID_SIZE*self.vparams.RESOLUTION/2.0
 
-        self.planner = vfhp.VFHPModel()
+        self.planner = vfhp.VFHPModel(self.vparams)
 
         self.planner.update_position(self.X_BIAS, self.Y_BIAS, 0.0)
 
@@ -100,13 +72,14 @@ class VFHPNode(object):
         #self.map_pub = rospy.Publisher('obstacle_grid', data_class, queue_size=3)
 
         # Subscribers
+        self.TfBuffer = tf2_ros.Buffer(cache_time = rospy.Duration(secs=5))
+        self.TfListener = tf2_ros.TransformListener(self.TfBuffer)
+
         self.odom_sub = rospy.Subscriber('odom', Odometry, self.odom_callback)
         self.laser_front_sub = rospy.Subscriber('scan_front', numpy_msg(LaserScan), self.laser_callback)
         self.laser_back_sub = rospy.Subscriber('scan_back', numpy_msg(LaserScan), self.laser_callback)
-        self.pose_sub = rospy.Subscriber('pose_kinematic', Pose2D, self.pose_callback)
+        #self.pose_sub = rospy.Subscriber('pose_kinematic', Pose2D, self.pose_callback)
 
-        self.TfBuffer = tf2_ros.Buffer(cache_time = rospy.Duration(secs=5))
-        self.TfListener = tf2_ros.TransformListener(self.TfBuffer)
 
         # Services
         self.goal_srv = rospy.Service("set_goal", SetGoal, self.set_goal_callback)
@@ -117,9 +90,17 @@ class VFHPNode(object):
     def odom_callback(self, msg):
         x = msg.pose.pose.position.x
         y = msg.pose.pose.position.y
-        roll, pitch, yaw = tf.transformations.euler_from_quaternion(msg.pose.pose.orientation)
-        theta = angles[2]
-        rospy.logdebug_throttle(1, "Received Odom msg (x, y, cita): %.2f, %.2f, %.2f" % (x, y, theta))
+
+        quat = np.array([msg.pose.pose.orientation.x,
+                            msg.pose.pose.orientation.y,
+                            msg.pose.pose.orientation.z,
+                            msg.pose.pose.orientation.w], np.float64)
+
+        roll, pitch, yaw = tf.transformations.euler_from_quaternion(quat)
+        #theta = yaw
+        rospy.logdebug_throttle(1, "Received Odom msg (x, y, cita): %.2f, %.2f, %.2f" % (x, y, yaw))
+        self.planner.update_position(x + self.X_BIAS, y + self.Y_BIAS, math.degrees(yaw))
+
 
 
     def laser_callback(self, msg):
