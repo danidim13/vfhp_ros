@@ -13,7 +13,7 @@ import threading
 
 from rospy.numpy_msg import numpy_msg
 from geometry_msgs.msg import Twist, Pose2D
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs.msg import LaserScan
 from mecanumrob_common.srv import SetGoal, SetGoalResponse
 from std_srvs.srv import Empty, EmptyResponse
@@ -69,6 +69,7 @@ class VFHPNode(object):
 
         # Publishers
         self.cmd_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
+        self.active_window_pub = rospy.Publisher('vfhp/active_window', OccupancyGrid, queue_size=5)
         #self.map_pub = rospy.Publisher('obstacle_grid', data_class, queue_size=3)
 
         # Subscribers
@@ -136,9 +137,11 @@ class VFHPNode(object):
             #rospy.logdebug_throttle(1, "Received LaserScan msg\n%s" % str(msg))
             #if msg.header.frame_id == "laser_front": rospy.logdebug_throttle(1, "Processed LaserScan msg from frame %s\nTotal readings: %d, discarded: %d\n" % (msg.header.frame_id, len(ranges), raw_data.shape[0]-valid_data.shape[0]))
 
+            # XXX: Critical section START
             self.obstacle_lock.acquire()
             self.planner.update_obstacle_density(valid_data, trans)
             self.obstacle_lock.release()
+            # XXX: Critical section END
 
     def pose_callback(self, msg):
         rospy.logdebug_throttle(1, "Received Pose2D message: %.2f, %.2f, %.2f" % (msg.x , msg.y, msg.theta) )
@@ -200,6 +203,26 @@ class VFHPNode(object):
         self.cmd_pub.publish(msg)
         return
 
+
+    def pub_active_window(self):
+
+        msg = OccupancyGrid()
+
+
+        msg.data = ((100/self.planner.const.C_MAX)*self.planner._active_grid().T.flatten()).tolist()
+
+        msg.header.stamp = rospy.Time.now()
+        msg.header.frame_id = "odom"
+        msg.info.map_load_time = msg.header.stamp
+        msg.info.height = self.planner.const.WINDOW_SIZE
+        msg.info.width = self.planner.const.WINDOW_SIZE
+
+        origin_d = (self.planner.const.WINDOW_SIZE-1)*self.planner.const.RESOLUTION/2.0
+        msg.info.origin.position.x = self.planner.x_0 - self.X_BIAS - origin_d
+        msg.info.origin.position.y = self.planner.y_0 - self.Y_BIAS - origin_d
+        msg.info.resolution = self.planner.const.RESOLUTION
+        self.active_window_pub.publish(msg)
+
     def run(self):
 
         rate = rospy.Rate(10)
@@ -226,7 +249,15 @@ class VFHPNode(object):
             self.pub_cmd_vel(cita, v)
 
             if it  > 100:
+
+                self.pub_active_window()
+
+                # XXX: Critical section START
+                self.obstacle_lock.acquire()
                 self.planner.decay_active_window(1, 3)
+                self.obstacle_lock.release()
+                # XXX: Critical section End
+
                 it -= 100
 
             it += self.DECAY_RATE
