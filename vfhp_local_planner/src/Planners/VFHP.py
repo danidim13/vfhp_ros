@@ -518,7 +518,7 @@ class VFHPModel(object):
         # A los valores de la ventana activa ([i_window:i_max, j_window:j_max])
         # Cuyo valor es mayor a decay, réstele decay.
         self.obstacle_grid[i_window:i_max, j_window:j_max][self.obstacle_grid[i_window:i_max, j_window:j_max] >= decay] -= decay
-
+        self.obstacle_grid[i_window:i_max, j_window:j_max][self.obstacle_grid[i_window:i_max, j_window:j_max] < decay] = 0
     def _active_grid(self):
 
         i_window = max(self.i_0 - (self.const.WINDOW_CENTER), 0)

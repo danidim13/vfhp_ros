@@ -31,6 +31,8 @@ class VFHPNode(object):
         self.odom_frame_id = rospy.get_param('~odom_frame_id', default='odom')
         self.robot_frame_id = rospy.get_param('~robot_frame_id', default='mecanum_base')
         self.DECAY_RATE = rospy.get_param('~decay_rate', default=50)
+        self.DECAY_VALUE = rospy.get_param('~decay_value', default=1)
+        self.DECAY_GUARDBAND = rospy.get_param('~decay_guardband', default=3)
 
 
         self.goal_reached = True
@@ -70,6 +72,7 @@ class VFHPNode(object):
         # Publishers
         self.cmd_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
         self.active_window_pub = rospy.Publisher('vfhp/active_window', OccupancyGrid, queue_size=5)
+        self.obstacle_grid_pub = rospy.Publisher('vfhp/obstacle_grid', OccupancyGrid, queue_size=5)
         #self.map_pub = rospy.Publisher('obstacle_grid', data_class, queue_size=3)
 
         # Subscribers
@@ -217,11 +220,29 @@ class VFHPNode(object):
         msg.info.height = self.planner.const.WINDOW_SIZE
         msg.info.width = self.planner.const.WINDOW_SIZE
 
-        origin_d = (self.planner.const.WINDOW_SIZE-1)*self.planner.const.RESOLUTION/2.0
-        msg.info.origin.position.x = self.planner.x_0 - self.X_BIAS - origin_d
-        msg.info.origin.position.y = self.planner.y_0 - self.Y_BIAS - origin_d
+        origin_d = (self.planner.const.WINDOW_SIZE-1)/2
+        msg.info.origin.position.x = (self.planner.i_0 - origin_d)*self.planner.const.RESOLUTION - self.X_BIAS
+        msg.info.origin.position.y = (self.planner.j_0 - origin_d)*self.planner.const.RESOLUTION - self.Y_BIAS
         msg.info.resolution = self.planner.const.RESOLUTION
         self.active_window_pub.publish(msg)
+
+    def pub_obstacle_grid(self):
+        msg = OccupancyGrid()
+
+
+        msg.data = ((100/self.planner.const.C_MAX)*self.planner.obstacle_grid.T.flatten()).tolist()
+
+        msg.header.stamp = rospy.Time.now()
+        msg.header.frame_id = "odom"
+        msg.info.map_load_time = msg.header.stamp
+        msg.info.height = self.planner.const.GRID_SIZE
+        msg.info.width = self.planner.const.GRID_SIZE
+
+        origin_d = (self.planner.const.GRID_SIZE-1)*self.planner.const.RESOLUTION/2.0
+        msg.info.origin.position.x = - self.X_BIAS
+        msg.info.origin.position.y = - self.Y_BIAS
+        msg.info.resolution = self.planner.const.RESOLUTION
+        self.obstacle_grid_pub.publish(msg)
 
     def run(self):
 
@@ -251,10 +272,11 @@ class VFHPNode(object):
             if it  > 100:
 
                 self.pub_active_window()
+                self.pub_obstacle_grid()
 
                 # XXX: Critical section START
                 self.obstacle_lock.acquire()
-                self.planner.decay_active_window(1, 3)
+                self.planner.decay_active_window(self.DECAY_VALUE, self.DECAY_GUARDBAND)
                 self.obstacle_lock.release()
                 # XXX: Critical section End
 
