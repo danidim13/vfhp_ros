@@ -24,7 +24,7 @@
 
   <!-- Author tags are optional, multiple are allowed, one per tag -->
   <!-- Authors do not have to be maintainers, but could be -->
-  <!-- Example: -->sensor_msgs
+  <!-- Example: -->
   <!-- <author email="jane.doe@example.com">Jane Doe</author> -->
 
 
@@ -67,6 +67,5 @@
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- Other tools can request additional information be placed here -->
-
   </export>
 </package>
