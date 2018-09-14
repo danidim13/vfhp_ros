@@ -1,0 +1,9 @@
+<library path="lib/libvfhp_rviz_plugin">
+  <class name="vfhp_rviz_plugin/Histogram"
+         type="vfhp_rviz_plugin::HistogramPanel"
+         base_class_type="rviz::Panel">
+    <description>
+      A panel widget allowing visualization of the Polar Histograms for the VFH+ Algorithm.
+    </description>
+  </class>
+</library>
