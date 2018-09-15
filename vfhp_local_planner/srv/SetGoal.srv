@@ -1,0 +1,6 @@
+bool set
+float64 x
+float64 y
+---
+bool success
+string message

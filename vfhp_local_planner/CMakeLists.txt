@@ -10,7 +10,6 @@ project(vfhp_local_planner)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
-  mecanumrob_common
   geometry_msgs
   nav_msgs
   std_msgs
@@ -61,11 +60,10 @@ add_message_files(
 )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+  FILES
+  SetGoal.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -112,7 +110,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES vfhp_local_planner
-  CATKIN_DEPENDS mecanumrob_common geometry_msgs nav_msgs roscpp rospy message_runtime std_msgs sensor_msgs tf2 tf2_ros std_srvs
+  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy message_runtime std_msgs sensor_msgs tf2 tf2_ros std_srvs
 #  DEPENDS system_lib
 )
 

@@ -15,7 +15,7 @@ from rospy.numpy_msg import numpy_msg
 from geometry_msgs.msg import Twist, Pose2D
 from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs.msg import LaserScan
-from mecanumrob_common.srv import SetGoal, SetGoalResponse
+from vfhp_local_planner.srv import SetGoal, SetGoalResponse
 from std_srvs.srv import Empty, EmptyResponse
 import Planners.VFHP as vfhp
 
