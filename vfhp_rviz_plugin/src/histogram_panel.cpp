@@ -5,6 +5,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QFrame>
+#include <QObject>
 
 #include "histogram_panel.h"
 #include "hist_widget.h"
@@ -29,13 +30,13 @@ namespace vfhp_rviz_plugin
         layout->addWidget(masked_topic_label);
         */
 
-        HistWidget *hist1 = new HistWidget;
-        HistWidget *hist2 = new HistWidget;
-        HistWidget *hist3 = new HistWidget;
+        HistWidget *histWraw = new HistWidget;
+        HistWidget *histWbin = new HistWidget;
+        HistWidget *histWmasked = new HistWidget;
 
-        hist1->labelTitle->setText("Polar Histogam");
-        hist2->labelTitle->setText("Binary Histogam");
-        hist3->labelTitle->setText("Masked Histogam");
+        histWraw->labelTitle->setText("Polar Histogam");
+        histWbin->labelTitle->setText("Binary Histogam");
+        histWmasked->labelTitle->setText("Masked Histogam");
 
 
         QFrame *line1 = new QFrame;
@@ -48,32 +49,66 @@ namespace vfhp_rviz_plugin
         line2->setFrameShape(QFrame::HLine);
         line2->setFrameShadow(QFrame::Sunken);
 
-        layout->addWidget(hist1);
+        layout->addWidget(histWraw);
         layout->addWidget(line1);
-        layout->addWidget(hist2);
+        layout->addWidget(histWbin);
         layout->addWidget(line2);
-        layout->addWidget(hist3);
+        layout->addWidget(histWmasked);
 
         setLayout(layout);
 
+        connect(histWraw->lineEditTopic, &QLineEdit::editingFinished, this, &HistogramPanel::updateRawTopic);
+        connect(histWbin->lineEditTopic, &QLineEdit::editingFinished, this, &HistogramPanel::updateBinTopic);
+        connect(histWmasked->lineEditTopic, &QLineEdit::editingFinished, this, &HistogramPanel::updateMaskedTopic);
+
     }
-/*
+
     void HistogramPanel::setRawHistTopic(const QString& topic)
     {
         if (raw_topic_ != topic)
+        {
             raw_topic_ = topic;
+
+            if (raw_topic_ == "") {
+                raw_hist_sub_.shutdown();
+            } else {
+                std::cout << "Setting raw topic to: " << topic.toStdString() << std::endl;
+                raw_hist_sub_ = nh_.subscribe(raw_topic_.toStdString(), 5, &HistogramPanel::updateRawHistogramData, this);
+            }
+            Q_EMIT configChanged();
+        }
     }
 
     void HistogramPanel::setBinHistTopic(const QString& topic)
     {
         if (bin_topic_ != topic)
+        {
             bin_topic_ = topic;
+
+            if (bin_topic_ == "") {
+                bin_hist_sub_.shutdown();
+            } else {
+                std::cout << "Setting bin topic to: " << topic.toStdString() << std::endl;
+                bin_hist_sub_ = nh_.subscribe(bin_topic_.toStdString(), 5, &HistogramPanel::updateBinHistogramData, this);
+            }
+            Q_EMIT configChanged();
+        }
     }
 
     void HistogramPanel::setMaskedHistTopic(const QString& topic)
     {
         if (masked_topic_ != topic)
+        {
             masked_topic_ = topic;
+
+            if (masked_topic_ == "") {
+                masked_hist_sub_.shutdown();
+            } else {
+                std::cout << "Setting masked topic to: " << topic.toStdString() << std::endl;
+                masked_hist_sub_ = nh_.subscribe(masked_topic_.toStdString(), 5, &HistogramPanel::updateMaskedHistogramData, this);
+            }
+            Q_EMIT configChanged();
+        }
     }
 
     void HistogramPanel::updateRawHistogramData(const vfhp_local_planner::Histogram::ConstPtr& msg)
@@ -91,17 +126,26 @@ namespace vfhp_rviz_plugin
 
     void HistogramPanel::updateRawTopic()
     {
-
+        QLineEdit *sender;
+        sender = (QLineEdit*)QObject::sender();
+        setRawHistTopic(sender->text());
+        std::cout << "HOLI1" << std::endl;
     }
     void HistogramPanel::updateBinTopic()
     {
-
+        QLineEdit *sender;
+        sender = (QLineEdit*)QObject::sender();
+        setBinHistTopic(sender->text());
+        std::cout << "HOLI2" << std::endl;
     }
     void HistogramPanel::updateMaskedTopic()
     {
-
+        QLineEdit *sender;
+        sender = (QLineEdit*)QObject::sender();
+        setMaskedHistTopic(sender->text());
+        std::cout << "HOLI3" << std::endl;
     }
-*/
+
     void HistogramPanel::save(rviz::Config config) const
     {
         rviz::Panel::save(config);

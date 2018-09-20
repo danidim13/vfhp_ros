@@ -21,7 +21,7 @@ class HistogramPanel: public rviz::Panel
         virtual void load(const rviz::Config& config);
         virtual void save(const rviz::Config config) const;
 
-/*
+
     public Q_SLOTS:
         void setRawHistTopic(const QString& topic);
         void setBinHistTopic(const QString& topic);
@@ -34,15 +34,15 @@ class HistogramPanel: public rviz::Panel
         void updateRawTopic();
         void updateBinTopic();
         void updateMaskedTopic();
-*/
+
     protected:
 
         QString raw_topic_;
         QString bin_topic_;
         QString masked_topic_;
 
-        //ros::NodeHandle nh_;
-        //ros::Subscriber raw_hist_sub, bin_hist_sub, masked_hist_sub;
+        ros::NodeHandle nh_;
+        ros::Subscriber raw_hist_sub_, bin_hist_sub_, masked_hist_sub_;
 
         vfhp_local_planner::Histogram raw_hist_;
         vfhp_local_planner::Histogram bin_hist_;
