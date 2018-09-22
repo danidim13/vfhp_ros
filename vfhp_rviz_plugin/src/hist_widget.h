@@ -13,6 +13,11 @@ class HistWidget: public QWidget, public Ui::Form
 
         explicit HistWidget(QWidget *parent = 0);
 
+        
+    private:
+        void diagrama();
+
+
 
 };
 

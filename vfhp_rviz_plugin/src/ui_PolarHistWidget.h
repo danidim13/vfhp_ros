@@ -79,6 +79,7 @@ public:
         // histogram->setObjectName(QStringLiteral("histogram"));
 
         chartView = new QChartView(Form);
+        chartView->setFrameStyle(QFrame::StyledPanel | QFrame::Raised);
         polarHist = new QPolarChart;
         polarHist->setObjectName(QStringLiteral("histogram"));
 
