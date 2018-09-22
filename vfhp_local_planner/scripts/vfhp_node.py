@@ -16,6 +16,7 @@ from geometry_msgs.msg import Twist, Pose2D
 from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs.msg import LaserScan
 from vfhp_local_planner.srv import SetGoal, SetGoalResponse
+from vfhp_local_planner.msg import Histogram
 from std_srvs.srv import Empty, EmptyResponse
 import Planners.VFHP as vfhp
 
@@ -73,6 +74,7 @@ class VFHPNode(object):
         self.cmd_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
         self.active_window_pub = rospy.Publisher('vfhp/active_window', OccupancyGrid, queue_size=5)
         self.obstacle_grid_pub = rospy.Publisher('vfhp/obstacle_grid', OccupancyGrid, queue_size=5)
+        self.polar_hist_pub = rospy.Publisher('vfhp/polar_hist', numpy_msg(Histogram), queue_size=5)
         #self.map_pub = rospy.Publisher('obstacle_grid', data_class, queue_size=3)
 
         # Subscribers
@@ -230,6 +232,7 @@ class VFHPNode(object):
         msg = OccupancyGrid()
 
 
+
         msg.data = ((100/self.planner.const.C_MAX)*self.planner.obstacle_grid.T.flatten()).tolist()
 
         msg.header.stamp = rospy.Time.now()
@@ -243,6 +246,21 @@ class VFHPNode(object):
         msg.info.origin.position.y = - self.Y_BIAS
         msg.info.resolution = self.planner.const.RESOLUTION
         self.obstacle_grid_pub.publish(msg)
+
+    def pub_polar_hist(self):
+
+        msg = Histogram()
+
+        msg.header.stamp = rospy.Time.now()
+        msg.header.frame_id = "odom"
+        msg.size = len(self.planner.polar_hist)
+        msg.data = self.planner.polar_hist
+
+        msg.threshold_lower = self.planner.const.T_LO
+        msg.threshold_upper = self.planner.const.T_HI
+        self.polar_hist_pub.publish(msg)
+
+
 
     def run(self):
 
@@ -273,6 +291,7 @@ class VFHPNode(object):
 
                 self.pub_active_window()
                 self.pub_obstacle_grid()
+                self.pub_polar_hist()
 
                 # XXX: Critical section START
                 self.obstacle_lock.acquire()
