@@ -34,6 +34,10 @@ class HistogramPanel: public rviz::Panel
         void updateRawTopic();
         // void updateBinTopic();
         // void updateMaskedTopic();
+        //
+    Q_SIGNALS:
+        void histDataReceived(QVector<QPointF> newData);
+        void histThreshChanged(qreal low, qreal high);
 
     protected:
 

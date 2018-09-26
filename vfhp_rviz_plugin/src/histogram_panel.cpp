@@ -1,4 +1,6 @@
 
+#include "histogram_panel.h"
+
 #include <QLineEdit>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -6,8 +8,8 @@
 #include <QPushButton>
 #include <QFrame>
 #include <QObject>
+#include <cmath>
 
-#include "histogram_panel.h"
 #include "hist_widget.h"
 
 namespace vfhp_rviz_plugin
@@ -58,6 +60,8 @@ namespace vfhp_rviz_plugin
         setLayout(layout);
 
         connect(histWraw->lineEditTopic, &QLineEdit::editingFinished, this, &HistogramPanel::updateRawTopic);
+        connect(this, &HistogramPanel::histDataReceived, histWraw, &HistWidget::updatePoints);
+        connect(this, &HistogramPanel::histThreshChanged, histWraw, &HistWidget::setLimits);
         //connect(histWbin->lineEditTopic, &QLineEdit::editingFinished, this, &HistogramPanel::updateBinTopic);
         //connect(histWmasked->lineEditTopic, &QLineEdit::editingFinished, this, &HistogramPanel::updateMaskedTopic);
 
@@ -116,7 +120,23 @@ namespace vfhp_rviz_plugin
     void HistogramPanel::updateRawHistogramData(const vfhp_local_planner::Histogram::ConstPtr& msg)
     {
         // std::cout << "Received Histogram msg" << std::endl;
+        //
+        Q_EMIT(histThreshChanged(msg->threshold_lower, msg->threshold_upper));
 
+        double radius;
+        double angle;
+        double alpha = M_PI*2.0/msg->size;
+
+        QVector<QPointF> polarPoints;
+        polarPoints.reserve(msg->size);
+
+        for (int i = 0; i < msg->size; i++) {
+            angle = i*alpha;
+            radius = msg->data[i];
+            polarPoints.append(QPointF(angle,radius));
+        }
+
+        Q_EMIT(histDataReceived(polarPoints));
     }
     // void HistogramPanel::updateBinHistogramData(const vfhp_local_planner::Histogram::ConstPtr& msg)
     // {
