@@ -15,6 +15,7 @@
 #include <QtWidgets/QButtonGroup>
 // #include <QtWidgets/QGraphicsView>
 #include <QtCharts/QPolarChart>
+#include <QtCharts/QChart>
 #include <QtCharts/QChartView>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QHeaderView>
@@ -37,7 +38,7 @@ public:
     QLabel *labelTopic;
     QLineEdit *lineEditTopic;
     // QGraphicsView *histogram;
-    QPolarChart *polarHist;
+    QChart *polarHist;
     QChartView *chartView;
 
     void setupUi(QWidget *Form)
@@ -80,8 +81,9 @@ public:
 
         chartView = new QChartView(Form);
         chartView->setFrameStyle(QFrame::StyledPanel | QFrame::Raised);
-        polarHist = new QPolarChart;
+        polarHist = new QChart;
         polarHist->setObjectName(QStringLiteral("histogram"));
+        polarHist->legend()->hide();
 
         // verticalLayout->addWidget(histogram);
         chartView->setChart(polarHist);
