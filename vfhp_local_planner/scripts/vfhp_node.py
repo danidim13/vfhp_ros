@@ -49,7 +49,7 @@ class VFHPNode(object):
         self.vparams.C_MAX = rospy.get_param('~c_max', default=20)
         self.vparams.RESOLUTION = rospy.get_param('~resolution', default=0.15)
         self.vparams.WINDOW_SIZE = rospy.get_param('~window_size', default=25)
-        self.vparams.ALPHA = rospy.get_param('~alpha', default=5)
+        self.vparams.HIST_SIZE = rospy.get_param('~hist_size', default=180)
         self.vparams.B = rospy.get_param('~kb', default=10.0)
         self.vparams.R_ROB = rospy.get_param('~robot_radius', default=0.478)
         self.vparams.D_S = rospy.get_param('~d_s', default=0.05)

@@ -65,20 +65,18 @@ class VConst(object):
         Se define automáticamente a partir de ``WINDOW_SIZE``.
         """
 
+        self.HIST_SIZE = 72
+        r"""int: Cantidad de sectores en el histograma polar.
+        """
+
         # Size of each polar sector
         # in the polar histogram (in degrees)
-        self.ALPHA = 5
-        r"""int: Tamaño de cada sector del histograma polar (en grados).
-
-        .. warning::
-            ``ALPHA`` debe ser un divisor de 360.
+        self.ALPHA = 360.0/self.HIST_SIZE
+        r"""float: Tamaño de cada sector del histograma polar (en grados).
+        Se define automáticamente a partir de ``HIST_SIZE``.
         """
-        assert 360 % self.ALPHA == 0, "Alpha must define an int amount of sectors"
 
-        self.HIST_SIZE = 360/self.ALPHA
-        r"""int: Cantidad de sectores en el histograma polar.
-        Se define automáticamente a partir de ``ALPHA``.
-        """
+
 
         # Constants for virtual vector magnitude calculations
         # D_max^2 = 2*(ws-1/2)^2*R^2
@@ -117,7 +115,7 @@ class VConst(object):
         self.T_HI = 3500.0
         """float: Valor de umbral superior para valles en el histograma polar.
         """
-        self.WIDE_V = self.HIST_SIZE/8
+        self.WIDE_V = self.HIST_SIZE/5
         """int: Tamaño mínimo de valle ancho.
         """
         self.V_MAX = 0.0628
@@ -151,12 +149,12 @@ class VConst(object):
 
         assert self.WINDOW_SIZE%2 == 1, "Window should have an odd number of cells"
         self.WINDOW_CENTER = self.WINDOW_SIZE/2
-        assert 360 % self.ALPHA == 0, "Alpha must define an int amount of sectors"
-        self.HIST_SIZE = 360/self.ALPHA
+        # assert 360 % self.ALPHA == 0, "Alpha must define an int amount of sectors"
+        self.ALPHA = 360.0/self.HIST_SIZE
         self.D_max2 = math.pow((self.WINDOW_SIZE-1)*self.RESOLUTION, 2)/2.0
         self.A = np.float_(1+self.B*self.D_max2)
         self.R_RS  = self.R_ROB + self.D_S
-        self.WIDE_V = self.HIST_SIZE/8
+        self.WIDE_V = self.HIST_SIZE/5
         self.MAX_COST = 180.0*(self.MU1+self.MU2+self.MU3)
 
 
@@ -298,7 +296,7 @@ class VFHPModel(object):
                     #print np.sqrt(dist2)
                     #print np.float_(R_RS)/np.sqrt(dist2)
                     #print "arcoseno ", np.arcsin(np.float_(R_RS)/np.sqrt(dist2))
-                    self.active_window[i,j,GAMA] = 90.0
+                    self.active_window[i,j,GAMA] = 45.0
 
         # The Polar Histogram maps each cell in the active window
         # to one or more angular sector
