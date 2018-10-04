@@ -105,7 +105,7 @@ class VFHPNode(object):
         roll, pitch, yaw = tf.transformations.euler_from_quaternion(quat)
         #theta = yaw
         rospy.logdebug_throttle(1, "Received Odom msg (x, y, cita): %.2f, %.2f, %.2f" % (x, y, yaw))
-        self.planner.update_position(x + self.X_BIAS, y + self.Y_BIAS, math.degrees(yaw))
+        self.planner.update_position(x + self.X_BIAS, y + self.Y_BIAS, yaw)
 
 
 
@@ -150,7 +150,7 @@ class VFHPNode(object):
 
     def pose_callback(self, msg):
         rospy.logdebug_throttle(1, "Received Pose2D message: %.2f, %.2f, %.2f" % (msg.x , msg.y, msg.theta) )
-        self.planner.update_position(msg.x + self.X_BIAS, msg.y + self.Y_BIAS, math.degrees(msg.theta))
+        self.planner.update_position(msg.x + self.X_BIAS, msg.y + self.Y_BIAS, msg.theta)
 
     def set_goal_callback(self, req):
         if req.set:
@@ -202,8 +202,8 @@ class VFHPNode(object):
         # Decidir que hacer con theta
 
         msg = Twist()
-        msg.linear.x = v*math.cos(math.radians(theta) - math.radians(self.planner.cita))
-        msg.linear.y = v*math.sin(math.radians(theta) - math.radians(self.planner.cita))
+        msg.linear.x = v*math.cos(theta - self.planner.cita)
+        msg.linear.y = v*math.sin(theta - self.planner.cita)
         msg.angular.z = 0.0
         self.cmd_pub.publish(msg)
         return
