@@ -83,6 +83,7 @@ class VConst(object):
         # A - B*D_max^2 = 1
         self.D_max2 = math.pow((self.WINDOW_SIZE-1)*self.RESOLUTION, 2)/2.0
         self.B = np.float_(10.0)
+        self.E = 2.0
         r"""float: Constante :math:`b` de la ecuación de la magnitud del
         vector de obstáculos.
         """
@@ -139,7 +140,7 @@ class VConst(object):
         self.MU3 = 2.0
         """float: Peso del costo de compromiso a una dirección.
         """
-        self.MAX_COST = 180.0*(self.MU1+self.MU2+self.MU3)
+        self.MAX_COST = math.pi*(self.MU1+self.MU2+self.MU3)
         """float: Máximo valor de la función de costo.
         """
 
@@ -155,7 +156,7 @@ class VConst(object):
         self.A = np.float_(1+self.B*self.D_max2)
         self.R_RS  = self.R_ROB + self.D_S
         self.WIDE_V = self.HIST_SIZE/5
-        self.MAX_COST = 180.0*(self.MU1+self.MU2+self.MU3)
+        self.MAX_COST = math.pi*(self.MU1+self.MU2+self.MU3)
 
 
 class VFHPModel(object):
@@ -281,7 +282,9 @@ class VFHPModel(object):
                 # (independent of scale/resolution of the grid)
                 dist2 = (celda_x - centro)**2.0 + (celda_y - centro)**2.0
                 self.active_window[i,j,DIST2] = dist2
-                self.active_window[i,j,ABDIST] = self.const.A - self.const.B*dist2
+                # self.active_window[i,j,ABDIST] = self.const.A - self.const.B*dist2
+                # self.active_window[i,j,ABDIST] = math.exp(-math.pow(math.sqrt(dist2/self.const.D_max2), 2.0*self.const.E)/self.const.B)
+                self.active_window[i,j,ABDIST] = math.exp(-math.pow(dist2/self.const.D_max2, self.const.E)/self.const.B)
 
                 # print "(x,y) = ({:d},{:d})".format(i, j)
                 # print "beta: {:.2f}".format(beta_p)
