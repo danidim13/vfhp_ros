@@ -36,7 +36,7 @@ HistWidget::HistWidget(QWidget *parent):
     // m_axisX->setLabelsVisible(false);
     // m_axisY->setLabelsVisible(false);
 
-    diagrama();
+    //diagrama();
 
 }
 
@@ -64,7 +64,7 @@ void HistWidget::updatePoints(const QVector<QPointF> &pointsPolar)
 
 void HistWidget::setLimits(const qreal &low, const qreal &high)
 {
-    qreal max = high*3.0;
+    qreal max = high*2.0;
 
     m_axisX->setRange(-max,max);
     m_axisY->setRange(-max,max);
@@ -90,7 +90,7 @@ void HistWidget::diagrama()
 
     for (int i = 0; i < points; i++) {
         double angle = i*M_PI*2/points;
-        double radius = i*2.0/64.0;
+        double radius = 0.5;
 
         data.append(QPointF(angle, radius));
     }
