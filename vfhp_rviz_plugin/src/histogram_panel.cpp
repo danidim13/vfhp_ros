@@ -75,10 +75,10 @@ namespace vfhp_rviz_plugin
         {
             raw_topic_ = topic;
 
-            if (raw_topic_ == "") {
+            if (raw_topic_ LINEAR== "") {
                 raw_hist_sub_.shutdown();
             } else {
-                std::cout << "Setting raw topic to: " << topic.toStdString() << std::endl;
+                std::cout << "Setting histogram topic to: " << topic.toStdString() << std::endl;
                 raw_hist_sub_ = nh_.subscribe(raw_topic_.toStdString(), 5, &HistogramPanel::updateRawHistogramData, this);
             }
             Q_EMIT configChanged();
@@ -152,7 +152,7 @@ namespace vfhp_rviz_plugin
         QLineEdit *sender;
         sender = (QLineEdit*)QObject::sender();
         setRawHistTopic(sender->text());
-        std::cout << "HOLI1" << std::endl;
+        // std::cout << "HOLI1" << std::endl;
     }
     // void HistogramPanel::updateBinTopic()
     // {
