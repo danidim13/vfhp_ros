@@ -25,6 +25,10 @@ DIST2 = 2
 ABDIST = 3
 GAMA = 4
 
+LINEAR = 1
+GAUSS = 2
+
+
 ###                                 ####
 ########################################
 
@@ -247,7 +251,7 @@ class VFHPModel(object):
 
     """
 
-    def __init__(self, const=None):
+    def __init__(self, const=None, dist_fcn=GAUSS):
 
         if const is None or type(const) is not VConst:
             self.const = VConst()
@@ -284,7 +288,14 @@ class VFHPModel(object):
                 self.active_window[i,j,DIST2] = dist2
                 # self.active_window[i,j,ABDIST] = self.const.A - self.const.B*dist2
                 # self.active_window[i,j,ABDIST] = math.exp(-math.pow(math.sqrt(dist2/self.const.D_max2), 2.0*self.const.E)/self.const.B)
-                self.active_window[i,j,ABDIST] = math.exp(-math.pow(dist2/self.const.D_max2, self.const.E)/self.const.B)
+
+
+                if dist_fcn==GAUSS:
+                    self.active_window[i,j,ABDIST] = math.exp(-math.pow(dist2/self.const.D_max2, self.const.E)/self.const.B)
+                elif dist_fcn=LINEAR:
+                    self.active_window[i,j,ABDIST] = self.const.A - self.const.B*dist2
+                else:
+                    self.active_window[i,j,ABDIST] = self.const.A - self.const.B*dist2
 
                 # print "(x,y) = ({:d},{:d})".format(i, j)
                 # print "beta: {:.2f}".format(beta_p)
