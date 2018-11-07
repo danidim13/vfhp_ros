@@ -75,7 +75,7 @@ namespace vfhp_rviz_plugin
         {
             raw_topic_ = topic;
 
-            if (raw_topic_ LINEAR== "") {
+            if (raw_topic_ == "") {
                 raw_hist_sub_.shutdown();
             } else {
                 std::cout << "Setting histogram topic to: " << topic.toStdString() << std::endl;
