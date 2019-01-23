@@ -25,10 +25,6 @@ DIST2 = 2
 ABDIST = 3
 GAMA = 4
 
-LINEAR = 1
-GAUSS = 2
-
-
 ###                                 ####
 ########################################
 
@@ -147,6 +143,10 @@ class VConst(object):
         self.MAX_COST = math.pi*(self.MU1+self.MU2+self.MU3)
         """float: Máximo valor de la función de costo.
         """
+        
+        self.DIST_FCN = "GAUSS"
+        """str: Función de magnitud para vectores de obstáculos, puede ser GAUSS o LINEAR.
+        """
 
     def update(self):
         """Actualiza los parámetros cuyo valor depende de otros parámetros
@@ -251,7 +251,7 @@ class VFHPModel(object):
 
     """
 
-    def __init__(self, const=None, dist_fcn=GAUSS):
+    def __init__(self, const=None):
 
         if const is None or type(const) is not VConst:
             self.const = VConst()
@@ -273,7 +273,7 @@ class VFHPModel(object):
 
     def _calc_active_window_params(self):
         centro = self.const.WINDOW_SIZE*self.const.RESOLUTION/2.0
-        print self.const.WINDOW_SIZE
+        # print self.const.WINDOW_SIZE
         for i in xrange(self.const.WINDOW_SIZE):
             for j in xrange(self.const.WINDOW_SIZE):
                 if j == self.const.WINDOW_CENTER and i == self.const.WINDOW_CENTER:
@@ -290,12 +290,14 @@ class VFHPModel(object):
                 # self.active_window[i,j,ABDIST] = math.exp(-math.pow(math.sqrt(dist2/self.const.D_max2), 2.0*self.const.E)/self.const.B)
 
 
-                if dist_fcn==GAUSS:
+                if self.const.DIST_FCN == "GAUSS":
                     self.active_window[i,j,ABDIST] = math.exp(-math.pow(dist2/self.const.D_max2, self.const.E)/self.const.B)
-                elif dist_fcn=LINEAR:
+                elif self.const.DIST_FCN == "LINEAR":
                     self.active_window[i,j,ABDIST] = self.const.A - self.const.B*dist2
                 else:
-                    self.active_window[i,j,ABDIST] = self.const.A - self.const.B*dist2
+                    raise Exception("Invalid parameter for distance function: {} (must be LINEAR or GAUSS)".format(self.const.DIST_FCN))
+
+                    #self.active_window[i,j,ABDIST] = self.const.A - self.const.B*dist2
 
                 # print "(x,y) = ({:d},{:d})".format(i, j)
                 # print "beta: {:.2f}".format(beta_p)

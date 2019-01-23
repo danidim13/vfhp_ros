@@ -61,11 +61,14 @@ class VFHPNode(object):
         self.vparams.MU1 = rospy.get_param('~mu1', default=6.0)
         self.vparams.MU2 = rospy.get_param('~mu2', default=2.0)
         self.vparams.MU3 = rospy.get_param('~mu3', default=2.0)
+        self.vparams.DIST_FCN = rospy.get_param('~dist_fcn', default="GAUSS")
         self.vparams.update()
 
         ## Usar?
         self.X_BIAS = self.vparams.GRID_SIZE*self.vparams.RESOLUTION/2.0
         self.Y_BIAS = self.vparams.GRID_SIZE*self.vparams.RESOLUTION/2.0
+
+
 
         self.planner = vfhp.VFHPModel(self.vparams)
 
@@ -288,11 +291,11 @@ class VFHPNode(object):
 
             self.pub_cmd_vel(cita, v)
 
+            self.pub_active_window()
+            self.pub_obstacle_grid()
+            self.pub_polar_hist()
+            
             if it  > 100:
-
-                self.pub_active_window()
-                self.pub_obstacle_grid()
-                self.pub_polar_hist()
 
                 # XXX: Critical section START
                 self.obstacle_lock.acquire()
