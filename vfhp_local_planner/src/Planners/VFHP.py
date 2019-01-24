@@ -72,7 +72,7 @@ class VConst(object):
         # Size of each polar sector
         # in the polar histogram (in degrees)
         self.ALPHA = 2*math.pi/self.HIST_SIZE
-        r"""float: Tamaño de cada sector del histograma polar (en grados).
+        r"""float: Tamaño de cada sector del histograma polar (en radianes).
         Se define automáticamente a partir de ``HIST_SIZE``.
         """
 
@@ -422,7 +422,7 @@ class VFHPModel(object):
             Posición absoluta del robot sobre el eje :math:`y`.
         cita : float
             Orientación del robot resepecto el eje :math:`z`
-            en grados.
+            en radianes.
 
         Notes
         -----
@@ -875,7 +875,7 @@ class VFHPModel(object):
         Returns
         -------
         new_dir  : float
-            La dirección del movimiento, dada en grados en el
+            La dirección del movimiento, dada en radianes en el
             rango  :math:`[0°,\:360°[` .
         .. ]
         V : float
@@ -1003,14 +1003,14 @@ class VFHPModel(object):
         plt.pcolor(self._active_grid().T, alpha=0.75, edgecolors='k',vmin=0,vmax=self.const.C_MAX)
         plt.xlabel("X")
         plt.ylabel("Y", rotation='horizontal')
-        plt.title("Ventana activa")
+        plt.title("Active Window (occupancy)")
 
     def _plot_active_window(self, i):
         plt.figure(i)
         plt.pcolor(self.active_window[:,:,MAG].T, alpha=0.75, edgecolors='k')
         plt.xlabel("X")
         plt.ylabel("Y", rotation='horizontal')
-        plt.title("Ventana activa")
+        plt.title("Active Window (magnitude)")
 
 
     def _plot_grid(self, i):
@@ -1033,7 +1033,7 @@ class VFHPModel(object):
         plt.polar(phi, self.polar_hist, color='y')
         plt.polar(phi, low, color ='g')
         plt.polar(phi, high, color ='r')
-        plt.title("Histograma polar")
+        plt.title("Primary Polar Histogram")
 
     def _plot_show(self):
         plt.show()
