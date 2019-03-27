@@ -82,8 +82,9 @@ class VConst(object):
         # D_max^2 = 2*(ws-1/2)^2*R^2
         # A - B*D_max^2 = 1
         self.D_max2 = math.pow((self.WINDOW_SIZE-1)*self.RESOLUTION, 2)/2.0
-        self.B = np.float_(10.0)
         self.E = 2.0
+        self.D = 1.0
+        self.B = np.float_(10.0)
         r"""float: Constante :math:`b` de la ecuación de la magnitud del
         vector de obstáculos.
         """
@@ -286,12 +287,14 @@ class VFHPModel(object):
                 # (independent of scale/resolution of the grid)
                 dist2 = (celda_x - centro)**2.0 + (celda_y - centro)**2.0
                 self.active_window[i,j,DIST2] = dist2
+                dist = math.sqrt(dist2)
                 # self.active_window[i,j,ABDIST] = self.const.A - self.const.B*dist2
                 # self.active_window[i,j,ABDIST] = math.exp(-math.pow(math.sqrt(dist2/self.const.D_max2), 2.0*self.const.E)/self.const.B)
 
 
                 if self.const.DIST_FCN == "GAUSS":
-                    self.active_window[i,j,ABDIST] = math.exp(-math.pow(dist2/self.const.D_max2, self.const.E)/self.const.B)
+                    #self.active_window[i,j,ABDIST] = math.exp(-math.pow(dist2/self.const.D_max2, self.const.E)/self.const.B)
+                    self.active_window[i,j,ABDIST] = math.exp(-math.pow(dist/self.const.D, self.const.E)/self.const.B)
                 elif self.const.DIST_FCN == "LINEAR":
                     self.active_window[i,j,ABDIST] = self.const.A - self.const.B*dist2
                 else:
@@ -542,8 +545,8 @@ class VFHPModel(object):
         """
         i_window = max(self.i_0 - (self.const.WINDOW_CENTER + guardband), 0)
         j_window = max(self.j_0 - (self.const.WINDOW_CENTER + guardband), 0)
-        i_max = min(i_window + self.const.WINDOW_SIZE + guardband, self.const.GRID_SIZE)
-        j_max = min(j_window + self.const.WINDOW_SIZE + guardband, self.const.GRID_SIZE)
+        i_max = min(i_window + self.const.WINDOW_SIZE + 2*guardband, self.const.GRID_SIZE)
+        j_max = min(j_window + self.const.WINDOW_SIZE + 2*guardband, self.const.GRID_SIZE)
 
         # NOTE:
         # Entiéndase ->
