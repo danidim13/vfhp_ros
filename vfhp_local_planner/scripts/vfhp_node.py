@@ -51,6 +51,7 @@ class VFHPNode(object):
         self.vparams.WINDOW_SIZE = rospy.get_param('~window_size', default=25)
         self.vparams.HIST_SIZE = rospy.get_param('~hist_size', default=180)
         self.vparams.B = rospy.get_param('~kb', default=10.0)
+        self.vparams.D = rospy.get_param('~kd', default=1.0)
         self.vparams.E = rospy.get_param('~ke' ,default=2.0)
         self.vparams.R_ROB = rospy.get_param('~robot_radius', default=0.478)
         self.vparams.D_S = rospy.get_param('~d_s', default=0.05)
@@ -294,7 +295,7 @@ class VFHPNode(object):
             self.pub_active_window()
             self.pub_obstacle_grid()
             self.pub_polar_hist()
-            
+
             if it  > 100:
 
                 # XXX: Critical section START
