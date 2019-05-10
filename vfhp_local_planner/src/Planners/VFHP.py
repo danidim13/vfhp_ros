@@ -144,7 +144,7 @@ class VConst(object):
         self.MAX_COST = math.pi*(self.MU1+self.MU2+self.MU3)
         """float: Máximo valor de la función de costo.
         """
-        
+
         self.DIST_FCN = "GAUSS"
         """str: Función de magnitud para vectores de obstáculos, puede ser GAUSS o LINEAR.
         """
@@ -263,6 +263,10 @@ class VFHPModel(object):
         self.const.update()
 
         print "INITIALIZING"
+
+        if self.const.DIST_FCN == "GAUSS":
+            print "Using gaussian dist func"
+            print "B=%.3f, D=%.3f, E=%.3f" % (self.const.B, self.const.D, self.const.E)
 
         self._reset_struct()
         self._reset_attr()
@@ -552,8 +556,8 @@ class VFHPModel(object):
         # Entiéndase ->
         # A los valores de la ventana activa ([i_window:i_max, j_window:j_max])
         # Cuyo valor es mayor a decay, réstele decay.
-        self.obstacle_grid[i_window:i_max, j_window:j_max][self.obstacle_grid[i_window:i_max, j_window:j_max] >= decay] -= decay
-        self.obstacle_grid[i_window:i_max, j_window:j_max][self.obstacle_grid[i_window:i_max, j_window:j_max] < decay] = 0
+        self.obstacle_grid[i_window:i_max, j_window:j_max] -= decay
+        self.obstacle_grid[i_window:i_max, j_window:j_max][self.obstacle_grid[i_window:i_max, j_window:j_max] < 0] = 0
     def _active_grid(self):
 
         i_window = max(self.i_0 - (self.const.WINDOW_CENTER), 0)
@@ -577,26 +581,17 @@ class VFHPModel(object):
 
         """
 
-        # TODO: vectorizar
+        i_s = self.i_0 - (self.const.WINDOW_CENTER)
+        j_s = self.j_0 - (self.const.WINDOW_CENTER)
+        i_f = i_s + self.const.WINDOW_SIZE
+        j_f = j_s + self.const.WINDOW_SIZE
 
-        i_window = self.i_0 - (self.const.WINDOW_CENTER)
-        j_window = self.j_0 - (self.const.WINDOW_CENTER)
-        for i in xrange(self.const.WINDOW_SIZE):
-            for j in xrange(self.const.WINDOW_SIZE):
-                if j == self.const.WINDOW_CENTER and i == self.const.WINDOW_CENTER:
-                    continue
+        c2 = np.square(np.float_(self.obstacle_grid[i_s:i_f,j_s:j_f]))
+        self.active_window[:,:,MAG] = np.multiply(c2,self.active_window[:,:,ABDIST])
 
-                grid_i = i_window + i
-                grid_j = j_window + j
+        # print self._active_grid()
+        # print c2
 
-                if grid_i < 0 or grid_i > self.const.GRID_SIZE or grid_j < 0 or grid_j > self.const.GRID_SIZE:
-                    self.active_window[i,j,MAG] = 0.0
-                    print 'TRIMMING cell (%d,%d)' % (grid_i, grid_j)
-                else :
-                    cij = np.float_(self.obstacle_grid[grid_i, grid_j])
-                    self.active_window[i,j,MAG] = np.square(cij)*self.active_window[i,j,ABDIST]
-
-        #return self.active_window
 
     def update_polar_histogram(self):
         r"""Actualiza el histograma polar de obstáculos.
@@ -614,6 +609,7 @@ class VFHPModel(object):
 
         """
 
+        # TODO: vectorizar, calcular k_range en el startup
         self.polar_hist[:] = 0.0
 
         for i in xrange(self.const.WINDOW_SIZE):
@@ -622,18 +618,16 @@ class VFHPModel(object):
                     continue
 
                 low = int(math.floor((self.active_window[i,j,BETA] - self.active_window[i,j,GAMA])/self.const.ALPHA))
-
                 high = int(math.ceil((self.active_window[i,j,BETA] + self.active_window[i,j,GAMA])/self.const.ALPHA))
 
+                #k_range = [x%self.const.HIST_SIZE for x in np.linspace(low, high, high-low+1, True, dtype = int)]
+                k_range = np.arange(low, high+1, 1, dtype=np.int_)%self.const.HIST_SIZE
 
-                k_range = [x%self.const.HIST_SIZE for x in np.linspace(low, high, high-low+1, True, dtype = int)]
+
                 #print "DEBUG: celda (%d, %d)" % (i, j)
                 #print k_range
 
-                #self.polar_hist[k_range] += self.active_window[i, j, MAG]
-                for k in k_range:
-                    #assert k < HIST_SIZE and k >= 0, "Error for polar histogram index: %d on i = %d, j = %d" % (k, i, j)
-                    self.polar_hist[k] += self.active_window[i, j, MAG]
+                self.polar_hist[k_range] += self.active_window[i, j, MAG]
 
         #return self.polar_hist
 
