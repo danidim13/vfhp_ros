@@ -327,18 +327,9 @@ class VFHPNode(object):
             self.plotter.plot_show()
 
 
-
-
-
-
 def main():
     node = VFHPNode()
     node.run()
 
 if __name__ == '__main__':
     main()
-
-
-        # Subscribers
-
-        # Publishers
