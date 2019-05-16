@@ -26,21 +26,48 @@ class VFHPNode(object):
         rospy.init_node('vfhp_planner', log_level=rospy.DEBUG)
 
         #### Obtener parámetros
+        self.__init_params()
 
+        #### Inicializar atributos
+        self.__init_attr()
+
+        # Publishers
+        self.cmd_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
+        self.active_window_pub = rospy.Publisher('vfhp/active_window', OccupancyGrid, queue_size=5)
+        self.obstacle_grid_pub = rospy.Publisher('vfhp/obstacle_grid', OccupancyGrid, queue_size=5)
+        self.polar_hist_pub = rospy.Publisher('vfhp/polar_hist', numpy_msg(Histogram), queue_size=5)
+        #self.map_pub = rospy.Publisher('obstacle_grid', data_class, queue_size=3)
+
+        # Subscribers
+        self.TfBuffer = tf2_ros.Buffer(cache_time = rospy.Duration(secs=5))
+        self.TfListener = tf2_ros.TransformListener(self.TfBuffer)
+
+        self.odom_sub = rospy.Subscriber('odom', Odometry, self.odom_callback)
+        self.laser_front_sub = rospy.Subscriber('scan_front', numpy_msg(LaserScan), self.laser_callback)
+        self.laser_back_sub = rospy.Subscriber('scan_back', numpy_msg(LaserScan), self.laser_callback)
+        #self.pose_sub = rospy.Subscriber('pose_kinematic', Pose2D, self.pose_callback)
+
+        # Services
+        self.goal_srv = rospy.Service("set_goal", SetGoal, self.set_goal_callback)
+
+        self.plotter = None
+        if (self.graphics):
+            from Planners.plotter import Plotter
+            self.plotter = Plotter(self.planner)
+            self.draw_srv = rospy.Service("draw_hist", Empty, self.draw_hist_callback)
+
+
+        #rospy.on_shutdown(self.draw_graphics)
+
+    def __init_params(self):
         ## Parámetros ROS
 
         self.odom_frame_id = rospy.get_param('~odom_frame_id', default='odom')
         self.robot_frame_id = rospy.get_param('~robot_frame_id', default='mecanum_base')
+        self.graphics = rospy.get_param('~graphics', default=True)
         self.DECAY_RATE = rospy.get_param('~decay_rate', default=50)
         self.DECAY_VALUE = rospy.get_param('~decay_value', default=1)
         self.DECAY_GUARDBAND = rospy.get_param('~decay_guardband', default=3)
-
-
-        self.goal_reached = True
-        self.goal = np.zeros(2,dtype=np.float64)
-        self.goal_lock = threading.Lock()
-
-        self.obstacle_lock = threading.Lock()
 
         ## Parámetros propios del algoritmo VFH+
         ## Para más información ver documentación del módulo VFH
@@ -65,38 +92,20 @@ class VFHPNode(object):
         self.vparams.DIST_FCN = rospy.get_param('~dist_fcn', default="GAUSS")
         self.vparams.update()
 
+    def __init_attr(self):
+
+        self.goal_reached = True
+        self.goal = np.zeros(2,dtype=np.float64)
+        self.goal_lock = threading.Lock()
+        self.obstacle_lock = threading.Lock()
+
         ## Usar?
         self.X_BIAS = self.vparams.GRID_SIZE*self.vparams.RESOLUTION/2.0
         self.Y_BIAS = self.vparams.GRID_SIZE*self.vparams.RESOLUTION/2.0
 
-
-
         self.planner = vfhp.VFHPModel(self.vparams)
 
         self.planner.update_position(self.X_BIAS, self.Y_BIAS, 0.0)
-
-        # Publishers
-        self.cmd_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
-        self.active_window_pub = rospy.Publisher('vfhp/active_window', OccupancyGrid, queue_size=5)
-        self.obstacle_grid_pub = rospy.Publisher('vfhp/obstacle_grid', OccupancyGrid, queue_size=5)
-        self.polar_hist_pub = rospy.Publisher('vfhp/polar_hist', numpy_msg(Histogram), queue_size=5)
-        #self.map_pub = rospy.Publisher('obstacle_grid', data_class, queue_size=3)
-
-        # Subscribers
-        self.TfBuffer = tf2_ros.Buffer(cache_time = rospy.Duration(secs=5))
-        self.TfListener = tf2_ros.TransformListener(self.TfBuffer)
-
-        self.odom_sub = rospy.Subscriber('odom', Odometry, self.odom_callback)
-        self.laser_front_sub = rospy.Subscriber('scan_front', numpy_msg(LaserScan), self.laser_callback)
-        self.laser_back_sub = rospy.Subscriber('scan_back', numpy_msg(LaserScan), self.laser_callback)
-        #self.pose_sub = rospy.Subscriber('pose_kinematic', Pose2D, self.pose_callback)
-
-
-        # Services
-        self.goal_srv = rospy.Service("set_goal", SetGoal, self.set_goal_callback)
-        self.draw_srv = rospy.Service("draw_hist", Empty, self.draw_hist_callback)
-
-        #rospy.on_shutdown(self.draw_graphics)
 
     def odom_callback(self, msg):
         x = msg.pose.pose.position.x
@@ -311,10 +320,11 @@ class VFHPNode(object):
             rate.sleep()
 
     def draw_graphics(self):
-        self.planner._plot_active_grid(1)
-        self.planner._plot_active_window(2)
-        self.planner._plot_hist(3)
-        self.planner._plot_show()
+        if self.plotter is not None:
+            self.plotter.plot_active_grid(1)
+            self.plotter.plot_active_window(2)
+            self.plotter.plot_hist(3)
+            self.plotter.plot_show()
 
 
 

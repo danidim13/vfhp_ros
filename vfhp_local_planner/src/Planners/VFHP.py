@@ -11,9 +11,6 @@ algoritmo VFH+, y constantes asociadas.
 import numpy as np
 import math
 
-from plotter import Plotter
-
-
 
 ########################################
 ###            Constantes           ####
@@ -1000,23 +997,3 @@ class VFHPModel(object):
     def _dist(array,i,j):
         n_dist = abs(i-j)
         return min(n_dist, len(array) - n_dist)
-
-    def _plot_active_grid(self, i):
-        if self.plotter is not None:
-            self.plotter.plot_active_grid(i)
-
-    def _plot_active_window(self, i):
-        if self.plotter is not None:
-            self.plotter.plot_active_window(i)
-
-    def _plot_grid(self, i):
-        if self.plotter is not None:
-            self.plotter.plot_grit(i)
-
-    def _plot_hist(self, i):
-        if self.plotter is not None:
-            self.plotter.plot_hist(i)
-
-    def _plot_show(self):
-        if self.plotter is not None:
-            self.plotter.plot_show()
