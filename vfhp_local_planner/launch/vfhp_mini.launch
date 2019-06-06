@@ -1,28 +1,26 @@
 <launch>
   <node name="vfhp_planner" pkg="vfhp_local_planner" type="vfhp_node.py" output="screen">
     <remap from="scan_front" to="scan"/>
-    <param name="odom_frame_id"   type="str"     value="wheel_odom"/>
+    <param name="odom_frame_id"   type="str"     value="odom"/>
     <param name="robot_frame_id"   type="str"     value="base_link"/>
     <param name="decay_rate"       type="int"     value="40"/>
     <param name="decay_value"      type="int"     value="2"/>
     <param name="decay_guardband"  type="int"     value="10"/>
-    <param name="grid_size"        type="int"     value="400"/>
+    <param name="grid_size"        type="int"     value="325"/>
     <param name="c_max"            type="int"     value="20"/>
     <param name="resolution"       type="double"  value="0.12"/>
     <param name="window_size"      type="int"     value="29"/>
-    <param name="hist_size"        type="int"     value="120"/>
+    <param name="hist_size"        type="int"     value="180"/>
     <param name="robot_radius"     type="double"  value="0.1991"/>
-    <param name="d_s"              type="double"  value="0.05"/>
-    <param name="ke"               type="double"  value="3.2"/>
-    <param name="kb"               type="double"  value="16.0"/>
-    <param name="kd"               type="double"  value="0.498"/>
-    <param name="t_lo"             type="double"  value="1000.0"/>
-    <param name="t_hi"             type="double"  value="1300.0"/>
+    <param name="d_s"              type="double"  value="0.1"/>
+    <param name="kb"               type="double"  value="55"/>
+    <param name="t_lo"             type="double"  value="315000.0"/>
+    <param name="t_hi"             type="double"  value="375000.0"/>
     <param name="v_max"            type="double"  value="0.30"/>
     <param name="v_min"            type="double"  value="0.0"/>
     <param name="mu1"              type="double"  value="6.0"/>
     <param name="mu2"              type="double"  value="2.0"/>
     <param name="mu3"              type="double"  value="2.0"/>
-    <param name="dist_fcn"         type="string"  value="GAUSS"/>
+    <param name="dist_fcn"         type="string"  value="LINEAR"/>
   </node>
 </launch>
