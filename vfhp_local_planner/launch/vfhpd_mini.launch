@@ -10,9 +10,9 @@
     <param name="c_max"            type="int"     value="20"/>
     <param name="resolution"       type="double"  value="0.12"/>
     <param name="window_size"      type="int"     value="29"/>
-    <param name="hist_size"        type="int"     value="120"/>
+    <param name="hist_size"        type="int"     value="100"/>
     <param name="robot_radius"     type="double"  value="0.1991"/>
-    <param name="d_s"              type="double"  value="0.05"/>
+    <param name="d_s"              type="double"  value="0.1"/>
     <param name="ke"               type="double"  value="3.2"/>
     <param name="kb"               type="double"  value="16.0"/>
     <param name="kd"               type="double"  value="0.498"/>
