@@ -16,8 +16,8 @@
     <param name="ke"               type="double"  value="3.2"/>
     <param name="kb"               type="double"  value="16.0"/>
     <param name="kd"               type="double"  value="0.498"/>
-    <param name="t_lo"             type="double"  value="1000.0"/>
-    <param name="t_hi"             type="double"  value="1300.0"/>
+    <param name="t_lo"             type="double"  value="800.0"/>
+    <param name="t_hi"             type="double"  value="1000.0"/>
     <param name="v_max"            type="double"  value="0.30"/>
     <param name="v_min"            type="double"  value="0.0"/>
     <param name="mu1"              type="double"  value="6.0"/>
