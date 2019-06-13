@@ -926,7 +926,7 @@ class VFHPModel(object):
                     # The only target dir is the middle of
                     # the oppening
                     print "narrow valley"
-                    c_center = self.const.ALPHA*(s1 + v_size/2.0)
+                    c_center = self.const.ALPHA*(s1 + 0.5 + v_size/2.0)
                     if c_center > math.pi:
                         c_center -= 2*math.pi
                     if c_center < -math.pi:
@@ -939,14 +939,14 @@ class VFHPModel(object):
                     # Target dirs are the left and right
                     # borders,
                     print "wide valley"
-                    c_right = self.const.ALPHA*(s1 + self.const.WIDE_V/2.0)
+                    c_right = self.const.ALPHA*(s1 + 0.5 + self.const.WIDE_V/2.0)
                     if c_right > math.pi:
                         c_right -= 2*math.pi
                     if c_right < -math.pi:
                         c_right += 2*math.pi
 
 
-                    c_left = self.const.ALPHA*(s2 - self.const.WIDE_V/2.0)
+                    c_left = self.const.ALPHA*(s2 + 0.5 - self.const.WIDE_V/2.0)
                     if c_left > math.pi:
                         c_left -= 2*math.pi
                     if c_left < -math.pi:
