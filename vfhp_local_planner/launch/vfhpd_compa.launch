@@ -1,6 +1,5 @@
 <launch>
   <node name="vfhp_planner" pkg="vfhp_local_planner" type="vfhp_node.py" output="screen">
-  <remap from="scan_front" to="scan"/>
     <param name="odom_frame_id"   type="str"     value="odom"/>
     <param name="robot_frame_id"   type="str"     value="base_link"/>
     <param name="decay_rate"       type="int"     value="40"/>
