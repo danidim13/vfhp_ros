@@ -535,6 +535,7 @@ class VFHPModel(object):
         #valid_readings = sensor_readings[sensor_readings[:,0] > 0.0]
         reading_translation = np.matmul(self.rotation_matrix, translation)
 
+        # print "Current theta: %.3f (rad), %.1f (deg)" % (self.cita, self.cita * 180 / math.pi)
         i = np.int_( (self.x_0 + reading_translation[0] + sensor_readings[:, 0]*np.cos(sensor_readings[:, 1] + self.cita))/self.const.RESOLUTION )
         j = np.int_( (self.y_0 + reading_translation[1] + sensor_readings[:, 0]*np.sin(sensor_readings[:, 1] + self.cita))/self.const.RESOLUTION )
 
@@ -956,7 +957,7 @@ class VFHPModel(object):
                     # Narrow valley
                     # The only target dir is the middle of
                     # the oppening
-                    print "narrow valley"
+                    # print "narrow valley"
                     c_center = self.const.ALPHA*(s1 + 0.5 + v_size/2.0)
                     if c_center > math.pi:
                         c_center -= 2*math.pi
@@ -969,7 +970,7 @@ class VFHPModel(object):
                     # Wide valley
                     # Target dirs are the left and right
                     # borders,
-                    print "wide valley"
+                    # print "wide valley"
                     c_right = self.const.ALPHA*(s1 + 0.5 + self.const.WIDE_V/2.0)
                     if c_right > math.pi:
                         c_right -= 2*math.pi
@@ -989,7 +990,7 @@ class VFHPModel(object):
                     if c_right != c_left and self._isInRange(c_right,c_left,t_dir):
                         candidate_dirs.append(t_dir)
 
-        print candidate_dirs
+        # print candidate_dirs
         # Once all we know all possible candidate dirs
         # choose the one with the lowest cost
         new_dir = None
@@ -998,7 +999,7 @@ class VFHPModel(object):
             cost = self.const.MU1*self._abs_angle_diff(c, t_dir) + \
                     self.const.MU2*self._abs_angle_diff(c, self.vcita) + \
                     self.const.MU3*self._abs_angle_diff(c, self.prev_dir)
-            print "For candidate dir {:.1f}: {:.3f} cost".format(c,cost)
+            # print "For candidate dir {:.1f}: {:.3f} cost".format(c,cost)
 
             if best_cost == None:
                 new_dir = c
@@ -1012,7 +1013,7 @@ class VFHPModel(object):
 
         V = self.const.V_MAX*(1 - best_cost/self.const.MAX_COST) + self.const.V_MIN
 
-        print "Setting dir to {:.1f}".format(new_dir)
+        # print "Setting dir to {:.1f}".format(new_dir)
         return new_dir, V
 
     @staticmethod
