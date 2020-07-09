@@ -231,7 +231,7 @@ class VFHPNode(object):
         msg.data = ((100/self.planner.const.C_MAX)*self.planner._active_grid().T.flatten()).tolist()
 
         msg.header.stamp = rospy.Time.now()
-        msg.header.frame_id = "odom"
+        msg.header.frame_id = self.odom_frame_id
         msg.info.map_load_time = msg.header.stamp
         msg.info.height = self.planner.const.WINDOW_SIZE
         msg.info.width = self.planner.const.WINDOW_SIZE
@@ -250,7 +250,7 @@ class VFHPNode(object):
         msg.data = ((100/self.planner.const.C_MAX)*self.planner.obstacle_grid.T.flatten()).tolist()
 
         msg.header.stamp = rospy.Time.now()
-        msg.header.frame_id = "odom"
+        msg.header.frame_id = self.odom_frame_id
         msg.info.map_load_time = msg.header.stamp
         msg.info.height = self.planner.const.GRID_SIZE
         msg.info.width = self.planner.const.GRID_SIZE
@@ -266,7 +266,7 @@ class VFHPNode(object):
         msg = Histogram()
 
         msg.header.stamp = rospy.Time.now()
-        msg.header.frame_id = "odom"
+        msg.header.frame_id = self.odom_frame_id
         msg.size = len(self.planner.polar_hist)
         msg.data = self.planner.polar_hist
 
