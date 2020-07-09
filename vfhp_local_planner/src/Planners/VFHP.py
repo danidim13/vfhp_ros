@@ -208,6 +208,8 @@ class VFHPModel(object):
         Posición del robot sobre el eje :math:`y`.
     cita : float
         Orientación del robot resepecto el eje :math:`z`.
+    vcita: float
+        Dirección del movimiento respecto al eje :math:`z`.
     rotation_matrix : ndarray
         Matriz de rotacion del robot.
 
@@ -356,6 +358,7 @@ class VFHPModel(object):
         self.x_0 = 0.0
         self.y_0 = 0.0
         self.cita = 0.0
+        self.vcita = 0.0
         self.rotation_matrix = np.array([[1, 0],
         [0, 1]], dtype=np.float_)
 
@@ -421,7 +424,7 @@ class VFHPModel(object):
         else:
             return 0
 
-    def update_position(self, x, y, cita):
+    def update_position(self, x, y, cita, vcita=None):
         r"""Actualiza la posición del robot.
 
         Parameters
@@ -433,6 +436,9 @@ class VFHPModel(object):
         cita : float
             Orientación del robot resepecto el eje :math:`z`
             en radianes.
+        vcita : float, optional
+            Dirección del movimiento del robot resepecto el eje :math:`z`
+            en radianes. Si no se indica se asume que es igual a :param:`cita`
 
         Notes
         -----
@@ -444,6 +450,7 @@ class VFHPModel(object):
             * :attr:`x_0`
             * :attr:`y_0`
             * :attr:`cita`
+            * :attr:`vcita`
             * :attr:`i_0`
             * :attr:`j_0`
             * :attr:`k_0`
@@ -462,6 +469,15 @@ class VFHPModel(object):
         radians = cita
         self.rotation_matrix = np.array([[math.cos(radians), -math.sin(radians)],
                                          [math.sin(radians), math.cos(radians)]])
+
+        if vcita is None:
+            self.vcita = cita
+        else:
+            if vcita > math.pi:
+                vcita -= 2*math.pi
+            if vcita < -math.pi:
+                vcita += 2*math.pi
+            self.vcita = vcita
 
         self.i_0 = int(x / self.const.RESOLUTION)
         self.j_0 = int(y / self.const.RESOLUTION)
@@ -561,6 +577,7 @@ class VFHPModel(object):
         # Cuyo valor es mayor a decay, réstele decay.
         self.obstacle_grid[i_window:i_max, j_window:j_max] -= decay
         self.obstacle_grid[i_window:i_max, j_window:j_max][self.obstacle_grid[i_window:i_max, j_window:j_max] < 0] = 0
+
     def _active_grid(self):
 
         i_window = max(self.i_0 - (self.const.WINDOW_CENTER), 0)
@@ -594,7 +611,6 @@ class VFHPModel(object):
 
         # print self._active_grid()
         # print c2
-
 
     def update_polar_histogram(self):
         r"""Actualiza el histograma polar de obstáculos.
@@ -683,131 +699,146 @@ class VFHPModel(object):
          * :attr:`masked_polar_hist`
         """
 
-
-        if omni:
-            self.masked_polar_hist[:] = self.bin_polar_hist[:]
-            return
-        else:
-            self.masked_polar_hist[:] = self.bin_polar_hist[:]
-            return
+        # if omni:
+        #     self.masked_polar_hist[:] = self.bin_polar_hist[:]
+        #     return
+        # else:
+        #     self.masked_polar_hist[:] = self.bin_polar_hist[:]
+        #     return
 
 
         # FIXME
         # Pasar a radianes
-        # phi_back = self.cita + math.pi
-        # phi_back = phi_back - 360.0 if phi_back > 360.0 else phi_back
-        #
-        # phi_left = phi_back
-        # phi_right = phi_back
-        #
-        # X_r = self.const.WINDOW_SIZE*self.const.RESOLUTION/2.0
-        # Y_r = self.const.WINDOW_SIZE*self.const.RESOLUTION/2.0
-        #
-        # print "INFO: Current dir is {:.3f}".format(self.cita)
-        # print "INFO: phi_back is {:.3f}".format(phi_back)
-        # for i in xrange(self.const.WINDOW_SIZE):
-        #     for j in xrange(self.const.WINDOW_SIZE):
-        #
-        #         if self.active_window[i,j,MAG] <= 2*(self.const.C_MAX**2) or (i == self.const.WINDOW_CENTER and j == self.const.WINDOW_CENTER):
-        #             #print "Skipped cel ({},{}) = {:.3f}".format(i,j,self.polar_hist[k])
-        #             continue
-        #
-        #         if self.active_window[i,j,BETA] == self.cita:
-        #             #print "Entering cell ({:d},{:d}) dead ahead".format(i,j)
-        #
-        #             # position of the cell
-        #             cij_x = (i+0.5)*self.const.RESOLUTION
-        #             cij_y = (j+0.5)*self.const.RESOLUTION
-        #
-        #             #### Left steering radius
-        #             r_robl_x = steer_l*np.cos(np.radians(self.cita+90.0))
-        #             r_robl_y = steer_l*np.sin(np.radians(self.cita+90.0))
-        #             # center of the steering radius in the active window
-        #             r_steer_x = X_r + r_robl_x
-        #             r_steer_y = Y_r + r_robl_y
-        #
-        #             c_dist2 = np.square(cij_x - r_steer_x) + np.square(cij_y - r_steer_y)
-        #             #print "Left dist {:.3f}".format(c_dist2)
-        #             if c_dist2 < np.square(self.const.R_RS + steer_l):
-        #                 phi_left = self.active_window[i,j,BETA] + 0.1
-        #                 print "Setting left limit angle to {:.1f} on cell ({:d},{:d}) = {:.1f}".format(phi_left, i, j, self.active_window[i,j,MAG])
-        #
-        #             #### Right steering radius
-        #             r_robr_x = steer_r*np.cos(np.radians(self.cita-90.0))
-        #             r_robr_y = steer_r*np.sin(np.radians(self.cita-90.0))
-        #             # center of the steering radius in the active window
-        #             r_steer_x = X_r + r_robr_x
-        #             r_steer_y = Y_r + r_robr_y
-        #
-        #             c_dist2 = np.square(cij_x - r_steer_x) + np.square(cij_y - r_steer_y)
-        #             #print "Right dist {:.3f}, limit {:.3f}".format(c_dist2,np.square(R_RS + steer_r))
-        #             if c_dist2 < np.square(R_RS + steer_r):
-        #                 phi_right = self.active_window[i,j,BETA] - 0.1
-        #                 print "Setting right limit angle to {:.1f} on cell ({:d},{:d})".format(phi_right, i, j)
-        #
-        #
-        #         elif self._isInRange(self.cita, phi_left, self.active_window[i,j,BETA]):
-        #             #left
-        #             #print "Entering cell ({:d},{:d}) in left range".format(i,j)
-        #             r_robl_x = steer_l*np.cos(np.radians(self.cita+90.0))
-        #             r_robl_y = steer_l*np.sin(np.radians(self.cita+90.0))
-        #
-        #             # center of the steering radius in the active window
-        #             r_steer_x = X_r + r_robl_x
-        #             r_steer_y = Y_r + r_robl_y
-        #
-        #             # position of the cell
-        #             cij_x = (i+0.5)*self.const.RESOLUTION
-        #             cij_y = (j+0.5)*self.const.RESOLUTION
-        #
-        #             # distance^2 from the cell to the steering center
-        #             c_dist2 = np.square(cij_x - r_steer_x) + np.square(cij_y - r_steer_y)
-        #
-        #             if c_dist2 < np.square(self.const.R_RS + steer_l):
-        #                 phi_left = self.active_window[i,j,BETA]
-        #                 print "Setting left limit angle to {:.1f} on cell ({:d},{:d}) = {:.1f}".format(phi_left, i, j, self.active_window[i,j,MAG])
-        #
-        #         elif self._isInRange(phi_right,self.cita,self.active_window[i,j,BETA]):
-        #             #right
-        #             #print "Entering cell ({:d},{:d}) in right range".format(i,j)
-        #             r_robr_x = steer_r*np.cos(np.radians(self.cita-90.0))
-        #             r_robr_y = steer_r*np.sin(np.radians(self.cita-90.0))
-        #
-        #             # center of the steering radius in the active window
-        #             r_steer_x = X_r + r_robr_x
-        #             r_steer_y = Y_r + r_robr_y
-        #
-        #             # position of the cell
-        #             cij_x = (i+0.5)*self.const.RESOLUTION
-        #             cij_y = (j+0.5)*self.const.RESOLUTION
-        #
-        #             # distance^2 from the cell to the steering center
-        #             c_dist2 = np.square(cij_x - r_steer_x) + np.square(cij_y - r_steer_y)
-        #
-        #             if c_dist2 < np.square(self.const.R_RS + steer_r):
-        #                 phi_right = self.active_window[i,j,BETA]
-        #                 print "Setting right limit angle to {:.1f} on cell ({:d},{:d})".format(phi_right, i, j)
-        #
-        #
-        # print "Limit angles:"
-        # print "Left:", phi_left
-        # print "Right:", phi_right
-        # print
-        # for k in xrange(self.const.HIST_SIZE):
-        #     if self.bin_polar_hist[k] == False and self._isInRange(phi_right,phi_left,k*self.const.ALPHA):
-        #         self.masked_polar_hist[k] = False
-        #     else:
-        #         self.masked_polar_hist[k] = True
+        phi_back = self.vcita + math.pi
+        phi_back = phi_back - 2 * math.pi if phi_back > math.pi else phi_back
+
+        assert -math.pi <= self.vcita <= math.pi, 'vcita ({:.4f}) is not in range [-pi, pi]'.format(start)
+        assert -math.pi <= phi_back <= math.pi, 'phi_back ({:.4f}) is not in range [-pi, pi]'.format(start)
+
+        phi_left = phi_back
+        phi_right = phi_back
+
+        X_r = self.const.WINDOW_SIZE*self.const.RESOLUTION/2.0
+        Y_r = self.const.WINDOW_SIZE*self.const.RESOLUTION/2.0
+
+        print "INFO: Current dir is {:.3f}".format(self.vcita*180/math.pi)
+        print "INFO: phi_back is {:.3f}".format(phi_back*180/math.pi)
+        print "INFO: Center pos is ({:.3f}, {:.3f})".format(X_r, Y_r)
+
+        active_grid = self._active_grid()
+
+        #### Left steering radius
+        r_robl_x = steer_l*math.cos(self.vcita+math.pi/2)
+        r_robl_y = steer_l*math.sin(self.vcita+math.pi/2)
+        # center of the steering radius in the active window
+        l_steer_x = X_r + r_robl_x
+        l_steer_y = Y_r + r_robl_y
+
+        print "INFO: left steer center and radius: ({:.2f}, {:.2f}), {:.2f}".format(l_steer_x, l_steer_y, steer_l)
+
+        #### Right steering radius
+        r_robr_x = steer_r*math.cos(self.vcita-math.pi/2)
+        r_robr_y = steer_r*math.sin(self.vcita-math.pi/2)
+        # center of the steering radius in the active window
+        r_steer_x = X_r + r_robr_x
+        r_steer_y = Y_r + r_robr_y
+
+        print "INFO: right steer center and radius: ({:.2f}, {:.2f}), {:.2f}".format(r_steer_x, r_steer_y, steer_r)
+
+        for i in xrange(self.const.WINDOW_SIZE):
+            for j in xrange(self.const.WINDOW_SIZE):
+
+                if active_grid[i,j] < self.const.C_MAX or (i == self.const.WINDOW_CENTER and j == self.const.WINDOW_CENTER):
+                    # print "Skipped cel ({},{}) = {:.3f}".format(i,j, active_grid[i, j])
+                    continue
+
+                if self.active_window[i,j,BETA] == self.vcita:
+                    print "Entering cell ({:d},{:d}) dead ahead".format(i,j)
+
+                    # position of the cell
+                    cij_x = (i+0.5)*self.const.RESOLUTION
+                    cij_y = (j+0.5)*self.const.RESOLUTION
+
+                    c_dist2 = (cij_x - l_steer_x)**2 + (cij_y - l_steer_y)**2
+                    print "Left dist {:.3f}".format(c_dist2)
+                    if c_dist2 < (self.const.R_RS + steer_l)**2:
+                        phi_left = self.active_window[i,j,BETA] + 0.01
+                        phi_left = phi_left - 2*math.pi if phi_left > math.pi else phi_left
+                        print "Setting left limit angle to {:.1f} on cell ({:d},{:d}) = {:.1f}".format(phi_left*180.0/math.pi, i, j, self.active_window[i,j,MAG])
+
+                    c_dist2 = (cij_x - r_steer_x)**2 + (cij_y - r_steer_y)**2
+                    print "Right dist {:.3f}, limit {:.3f}".format(c_dist2, np.square(self.const.R_RS + steer_r))
+                    if c_dist2 < (self.const.R_RS + steer_r)**2:
+                        phi_right = self.active_window[i,j,BETA] - 0.01
+                        phi_right = phi_right + 2*math.pi if phi_right < -math.pi else phi_right
+                        print "Setting right limit angle to {:.1f} on cell ({:d},{:d})".format(phi_right*180.0/math.pi, i, j)
+
+
+                elif self._isInRange(self.vcita, phi_left, self.active_window[i,j,BETA]):
+                    #left
+                    print "Entering cell ({:d},{:d}) in left range".format(i,j)
+
+                    # position of the cell
+                    cij_x = (i+0.5)*self.const.RESOLUTION
+                    cij_y = (j+0.5)*self.const.RESOLUTION
+
+                    # distance^2 from the cell to the steering center
+                    c_dist2 = (cij_x - l_steer_x)**2 + (cij_y - l_steer_y)**2
+                    print "Left dist {:.3f}".format(c_dist2)
+
+                    if c_dist2 < (self.const.R_RS + steer_l)**2:
+                        phi_left = self.active_window[i,j,BETA]
+                        # phi_left = self.active_window[i,j,BETA] + 0.001
+                        print "Setting left limit angle to {:.1f} on cell ({:d},{:d}) = {:.1f}".format(phi_left*180/math.pi, i, j, self.active_window[i,j,MAG])
+
+                elif self._isInRange(phi_right, self.vcita, self.active_window[i,j,BETA]):
+                    #right
+                    print "Entering cell ({:d},{:d}) in right range".format(i,j)
+
+                    # position of the cell
+                    cij_x = (i+0.5)*self.const.RESOLUTION
+                    cij_y = (j+0.5)*self.const.RESOLUTION
+
+                    # distance^2 from the cell to the steering center
+                    c_dist2 = (cij_x - r_steer_x)**2 + (cij_y - r_steer_y)**2
+                    print "Right dist {:.3f}".format(c_dist2)
+
+                    if c_dist2 < (self.const.R_RS + steer_r)**2:
+                        phi_right = self.active_window[i,j,BETA]
+                        # phi_right = phi_right + 2*math.pi if phi_right < -math.pi else phi_right
+                        print "Setting right limit angle to {:.1f} on cell ({:d},{:d})".format(phi_right*180/math.pi, i, j)
+
+
+        print "Limit angles:"
+        print "Left:", phi_left*180.0/math.pi
+        print "Right:", phi_right*180.0/math.pi
+        for k in xrange(self.const.HIST_SIZE):
+            if self.bin_polar_hist[k] == False:
+                angle = k*self.const.ALPHA
+                if angle >= math.pi:
+                    angle -= 2*math.pi
+
+                if self._isInRange(phi_right,phi_left, angle):
+                    self.masked_polar_hist[k] = False
+                else:
+                    self.masked_polar_hist[k] = True
+            else:
+                self.masked_polar_hist[k] = True
 
     # This function determines if an angle in the range
-    # [0, 360[ is inside the sector given, from start to
-    # end (counter-clockwise), also angles in the range [0, 360[
+    # [-pi, pi[ is inside the sector given, from start to
+    # end (counter-clockwise), also angles in the range [-pi, pi[
     @staticmethod
     def _isInRange(start,end,angle):
+
+        assert -math.pi <= start <= math.pi, 'start ({:.4f}) is not in range [-pi, pi]'.format(start)
+        assert -math.pi <= end <= math.pi, 'end ({:.4f}) is not in range [-pi, pi]'.format(end)
+        assert -math.pi <= angle <= math.pi, 'angle ({:.4f}) is not in range [-pi, pi]'.format(angle)
+
         if start < end:
-            return (start <= angle and angle <= end)
+            return (start <= angle and angle < end)
         else:
-            return (start <= angle and angle <= math.pi) or (-math.pi <= angle and angle <= end)
+            return (start <= angle and angle <= math.pi) or (-math.pi <= angle and angle < end)
 
 
     def find_valleys(self):
@@ -907,7 +938,7 @@ class VFHPModel(object):
             # t_dir = t_dir if t_dir >= 0 else t_dir + 360
         else:
             # Else set the current direction as the target
-            t_dir = self.cita
+            t_dir = self.vcita
 
 
         candidate_dirs = []
@@ -964,9 +995,9 @@ class VFHPModel(object):
         new_dir = None
         best_cost = None
         for c in candidate_dirs:
-            cost = self.const.MU1*self._abs_angle_diff(c,t_dir) + \
-                    self.const.MU2*self._abs_angle_diff(c,self.cita) + \
-                    self.const.MU3*self._abs_angle_diff(c,self.prev_dir)
+            cost = self.const.MU1*self._abs_angle_diff(c, t_dir) + \
+                    self.const.MU2*self._abs_angle_diff(c, self.vcita) + \
+                    self.const.MU3*self._abs_angle_diff(c, self.prev_dir)
             print "For candidate dir {:.1f}: {:.3f} cost".format(c,cost)
 
             if best_cost == None:
