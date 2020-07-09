@@ -2,26 +2,34 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import math
+import matplotlib.pyplot as plt
+
+from .context import Planners
 
 def main():
     np.set_printoptions(precision=2)
 
-    c = VConst()
-    robot = VFHPModel(c)
+    c = Planners.VFHP.VConst()
+    c.DIST_FCN = 'GAUSS'
+    c.E = 3.2
+    c.T_LO = 1000
+    c.T_HI = 1800
+
+    robot = Planners.VFHP.VFHPModel(c)
     print "Obstacle grid"
     print robot.obstacle_grid, "\n"
     print "Active Window angles"
-    print robot.active_window[:,:,BETA], "\n"
+    print robot.active_window[:,:,Planners.VFHP.BETA], "\n"
     print "Active Window squared distances"
-    print robot.active_window[:,:,DIST2], "\n"
+    print robot.active_window[:,:,Planners.VFHP.DIST2], "\n"
     print "Active Window a-bd^2 constants"
-    print robot.active_window[:,:,ABDIST], "\n"
+    print robot.active_window[:,:,Planners.VFHP.ABDIST], "\n"
     print "Max distance squared: %f" % c.D_max2
 
 
     print("Updating the obstacle grid and robot position")
 
-    robot.update_position(1.5,1.5,90.0)
+    robot.update_position(1.3+0.15, 1.5, math.pi*6/6)
 
     #robot.obstacle_grid[1,6] = 1
     #robot.obstacle_grid[1,5] = 2
@@ -37,37 +45,37 @@ def main():
 #    robot.obstacle_grid[9,5] = 5
 #    robot.obstacle_grid[9,6] = 4
 
-    robot.obstacle_grid[27,30] = 20
-    robot.obstacle_grid[27,31] = 20
-    robot.obstacle_grid[27,29] = 20
-    robot.obstacle_grid[28,30] = 20
-    robot.obstacle_grid[26,30] = 20
+    robot.obstacle_grid[27,30] = c.C_MAX
+    robot.obstacle_grid[27,31] = c.C_MAX
+    robot.obstacle_grid[27,29] = c.C_MAX
+    robot.obstacle_grid[28,30] = c.C_MAX
+    robot.obstacle_grid[26,30] = c.C_MAX
 
-    robot.obstacle_grid[30,37] = 20
-    robot.obstacle_grid[31,37] = 20
-    robot.obstacle_grid[29,37] = 20
-    robot.obstacle_grid[30,38] = 20
-    robot.obstacle_grid[30,36] = 20
+    robot.obstacle_grid[30,37] = c.C_MAX
+    robot.obstacle_grid[31,37] = c.C_MAX
+    robot.obstacle_grid[29,37] = c.C_MAX
+    robot.obstacle_grid[30,38] = c.C_MAX
+    robot.obstacle_grid[30,36] = c.C_MAX
 
-    robot.obstacle_grid[41,30] = 20
-    robot.obstacle_grid[40,30] = 20
-    robot.obstacle_grid[42,30] = 20
-    robot.obstacle_grid[41,31] = 20
-    robot.obstacle_grid[41,29] = 20
+    robot.obstacle_grid[41,30] = c.C_MAX
+    robot.obstacle_grid[40,30] = c.C_MAX
+    robot.obstacle_grid[42,30] = c.C_MAX
+    robot.obstacle_grid[41,31] = c.C_MAX
+    robot.obstacle_grid[41,29] = c.C_MAX
 
     print "i , j , k "
     print robot.i_0, robot.j_0, robot.k_0
     print robot._active_grid(), "\n"
 
     print "Simulating a set of sensor readings"
-    pseudo_readings = np.float_([[0.2, np.radians(x)] for x in range(0,90,2)])
+    pseudo_readings = np.float_([[0.2, np.radians(x)] for x in range(0,45,2)])
     #pseudo_readings = np.float_([[0.3,
     robot.update_obstacle_density(pseudo_readings)
 
 
     print "Updating the active window"
     robot.update_active_window()
-    print robot.active_window[:, :, MAG], "\n"
+    print robot.active_window[:, :, Planners.VFHP.MAG], "\n"
 
     print "Updating polar histogram"
     robot.update_polar_histogram()
@@ -78,7 +86,7 @@ def main():
     print robot.bin_polar_hist, "\n"
 
     print "Updating masked polar histogram"
-    robot.update_masked_polar_hist(c.R_ROB*1,c.R_ROB*1)
+    robot.update_masked_polar_hist(c.R_ROB*50,c.R_ROB*5)
     print robot.masked_polar_hist, "\n"
 
     print "Looking for valleys"
@@ -86,7 +94,7 @@ def main():
     print robot.valleys, "\n"
 
     print "Select new direction"
-    robot.prev_dir = 90.0
+    robot.prev_dir = math.pi/2
     print robot.calculate_steering_dir(i), "\n"
 
     print "Setting speed to (MAX = {:.2f})".format(c.V_MAX)
@@ -120,21 +128,21 @@ def main():
     plt.ylabel("Y", rotation='horizontal')
 
     plt.figure(2)
-    x = [c.ALPHA*x for x in range(len(robot.polar_hist))]
+    x = np.degrees([c.ALPHA*x for x in range(len(robot.polar_hist))])
     i = [a for a in range(len(robot.polar_hist))]
-    plt.bar(x, robot.polar_hist, 3.0, 0, color='r')
+    plt.bar(x, robot.polar_hist, math.degrees(c.ALPHA), 0, color='r')
     plt.title("Histograma polar")
 
     plt.figure(3)
-    x = [c.ALPHA*x for x in range(len(robot.polar_hist))]
-    i = [a for a in range(len(robot.polar_hist))]
-    plt.bar(x, robot.bin_polar_hist, 3.0, 0, color='b')
+    x = np.degrees([c.ALPHA*x for x in range(len(robot.bin_polar_hist))])
+    i = [a for a in range(len(robot.bin_polar_hist))]
+    plt.bar(x, robot.bin_polar_hist, math.degrees(c.ALPHA), 0, color='b')
     plt.title("Histograma polar binario")
 
     plt.figure(4)
-    x = [c.ALPHA*x for x in range(len(robot.polar_hist))]
-    i = [a for a in range(len(robot.polar_hist))]
-    plt.bar(x, robot.masked_polar_hist, 3.0, 0, color='g')
+    x = np.degrees([c.ALPHA*x for x in range(len(robot.masked_polar_hist))])
+    i = [a for a in range(len(robot.masked_polar_hist))]
+    plt.bar(x, robot.masked_polar_hist, math.degrees(c.ALPHA), 0, color='g')
     plt.title("Histograma polar mascarado")
 
     plt.show()
