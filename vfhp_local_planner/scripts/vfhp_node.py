@@ -39,12 +39,12 @@ class VFHPNode(object):
         #self.map_pub = rospy.Publisher('obstacle_grid', data_class, queue_size=3)
 
         # Subscribers
-        self.TfBuffer = tf2_ros.Buffer(cache_time = rospy.Duration(secs=5))
+        self.TfBuffer = tf2_ros.Buffer(cache_time = rospy.Duration(secs=0.1))
         self.TfListener = tf2_ros.TransformListener(self.TfBuffer)
 
-        self.odom_sub = rospy.Subscriber('odom', Odometry, self.odom_callback)
-        self.laser_front_sub = rospy.Subscriber('scan_front', numpy_msg(LaserScan), self.laser_callback)
-        self.laser_back_sub = rospy.Subscriber('scan_back', numpy_msg(LaserScan), self.laser_callback)
+        self.odom_sub = rospy.Subscriber('odom', Odometry, self.odom_callback, queue_size=1)
+        self.laser_front_sub = rospy.Subscriber('scan_front', numpy_msg(LaserScan), self.laser_callback, queue_size=1)
+        self.laser_back_sub = rospy.Subscriber('scan_back', numpy_msg(LaserScan), self.laser_callback, queue_size=1)
         #self.pose_sub = rospy.Subscriber('pose_kinematic', Pose2D, self.pose_callback)
 
         # Services
@@ -119,6 +119,10 @@ class VFHPNode(object):
         roll, pitch, yaw = tf.transformations.euler_from_quaternion(quat)
         #theta = yaw
         rospy.logdebug_throttle(1, "Received Odom msg (x, y, cita): %.2f, %.2f, %.2f" % (x, y, yaw))
+        rospy.logdebug_throttle(1, "Orientation (w, x, y, z): %.2f, %.2f, %.2f, %.2f" % (msg.pose.pose.orientation.w, 
+                                                                                   msg.pose.pose.orientation.x,
+                                                                                   msg.pose.pose.orientation.y, 
+                                                                                   msg.pose.pose.orientation.z))
         self.planner.update_position(x + self.X_BIAS, y + self.Y_BIAS, yaw)
 
 
@@ -126,10 +130,12 @@ class VFHPNode(object):
     def laser_callback(self, msg):
 
 
-        tf_found = self.TfBuffer.can_transform(self.robot_frame_id, msg.header.frame_id, rospy.Time(0))
+        # F1Tenth hotfix
+        laser_frame = "{:s}_model".format(msg.header.frame_id)
+        tf_found = self.TfBuffer.can_transform(self.robot_frame_id, laser_frame, rospy.Time(0))
 
         if not tf_found:
-            rospy.logerr("Laser Transform not found from frame %s to target %s" %(msg.header.frame_id, self.robot_frame_id))
+            rospy.logerr("Laser Transform not found from frame %s to target %s" %(laser_frame, self.robot_frame_id))
 
         else:
 
@@ -137,7 +143,7 @@ class VFHPNode(object):
             # Si las transformaciones son fijas se podrían buscar una única vez,
             # la primera vez que se recibe un mensaje, y guardar la info.
 
-            tf_msg = self.TfBuffer.lookup_transform(self.robot_frame_id, msg.header.frame_id, rospy.Time(0))
+            tf_msg = self.TfBuffer.lookup_transform(self.robot_frame_id, laser_frame, rospy.Time.now())
 
             quat = np.array([tf_msg.transform.rotation.x,
                                 tf_msg.transform.rotation.y,
@@ -152,9 +158,11 @@ class VFHPNode(object):
             raw_data = np.column_stack((ranges,angles))
             valid_data = raw_data[(raw_data[:,0] > msg.range_min) & (raw_data[:,0] < msg.range_max)]
 
-            #rospy.logdebug_throttle(1, "Laser tf for %s\n%s\nSensor pos: %s\nreadings %s" %(msg.header.frame_id, tf_msg, str(trans), str(valid_data)))
-            #rospy.logdebug_throttle(1, "Received LaserScan msg\n%s" % str(msg))
-            #if msg.header.frame_id == "laser_front": rospy.logdebug_throttle(1, "Processed LaserScan msg from frame %s\nTotal readings: %d, discarded: %d\n" % (msg.header.frame_id, len(ranges), raw_data.shape[0]-valid_data.shape[0]))
+            # rospy.logdebug_throttle(1, "Laser tf for %s\n%s\nSensor pos: %s\nreadings %s" %(laser_frame, tf_msg, str(trans), str(valid_data)))
+            # rospy.logdebug_throttle(1, "Received LaserScan msg\n%s" % str(msg))
+
+            # rospy.logdebug_throttle(1, "Transformation for {:s} frame to robot is (x, y, theta): ({:.2f}, {:.2f}, {:.3f})".format(laser_frame, trans[0], trans[0], euler[2]))
+            # if msg.header.frame_id == "laser_front": rospy.logdebug_throttle(1, "Processed LaserScan msg from frame %s\nTotal readings: %d, discarded: %d\n" % (msg.header.frame_id, len(ranges), raw_data.shape[0]-valid_data.shape[0]))
 
             # XXX: Critical section START
             self.obstacle_lock.acquire()
@@ -235,6 +243,7 @@ class VFHPNode(object):
         msg.info.map_load_time = msg.header.stamp
         msg.info.height = self.planner.const.WINDOW_SIZE
         msg.info.width = self.planner.const.WINDOW_SIZE
+        
 
         origin_d = (self.planner.const.WINDOW_SIZE-1)/2
         msg.info.origin.position.x = (self.planner.i_0 - origin_d)*self.planner.const.RESOLUTION - self.X_BIAS
@@ -255,7 +264,7 @@ class VFHPNode(object):
         msg.info.height = self.planner.const.GRID_SIZE
         msg.info.width = self.planner.const.GRID_SIZE
 
-        origin_d = (self.planner.const.GRID_SIZE-1)*self.planner.const.RESOLUTION/2.0
+        # origin_d = (self.planner.const.GRID_SIZE-1)*self.planner.const.RESOLUTION/2.0
         msg.info.origin.position.x = - self.X_BIAS
         msg.info.origin.position.y = - self.Y_BIAS
         msg.info.resolution = self.planner.const.RESOLUTION
@@ -308,6 +317,7 @@ class VFHPNode(object):
             if it  > 100:
 
                 # XXX: Critical section START
+                # rospy.logwarn_throttle(1, "decay was called")
                 self.obstacle_lock.acquire()
                 self.planner.decay_active_window(self.DECAY_VALUE, self.DECAY_GUARDBAND)
                 self.obstacle_lock.release()
