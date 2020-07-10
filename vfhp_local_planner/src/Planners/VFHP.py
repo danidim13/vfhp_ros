@@ -908,8 +908,8 @@ class VFHPModel(object):
         -------
         new_dir  : float
             La dirección del movimiento, dada en radianes en el
-            rango  :math:`[0°,\:360°[` .
-        .. ]
+            rango  :math:`[0°,\:360°[` respecto al marco de
+            referencia global. 
         V : float
             La velocidad del robot.
 
