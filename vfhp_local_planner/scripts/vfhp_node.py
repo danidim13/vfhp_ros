@@ -224,9 +224,12 @@ class VFHPNode(object):
         # Decidir que hacer con theta
 
         msg = Twist()
-        msg.linear.x = v*math.cos(theta - self.planner.cita)
-        msg.linear.y = v*math.sin(theta - self.planner.cita)
-        msg.angular.z = 0.0
+        # msg.linear.x = v*math.cos(theta - self.planner.cita)
+        # msg.linear.y = v*math.sin(theta - self.planner.cita)
+        # msg.angular.z = 0.0
+        # XXX: HOTFIX for F1Tenth, usar marco de ref global
+        msg.linear.x = v*math.cos(theta)
+        msg.linear.y = v*math.sin(theta)
         self.cmd_pub.publish(msg)
         return
 
